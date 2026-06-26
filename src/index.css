@@ -1,0 +1,10 @@
+/* Bems Farms Admin — global React overrides */
+/* All styling comes from the GotPOS template CSS loaded in index.html */
+
+body {
+  margin: 0;
+}
+
+#root {
+  display: contents;
+}
