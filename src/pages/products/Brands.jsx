@@ -1,6 +1,35 @@
-import { Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import ImportModal from '../../components/ImportModal'
+
+const BRAND_IMPORT_FIELDS = [
+  { key:'name',   label:'Name',   required:true  },
+  { key:'status', label:'Status', required:false },
+]
+
+function genBrandCode(name, existingCodes = []) {
+  const slug = name.trim().toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3).padEnd(3, 'X')
+  let counter = 1
+  let code
+  do {
+    code = `BRD-${slug}-${String(counter).padStart(3, '0')}`
+    counter++
+  } while (existingCodes.includes(code))
+  return code
+}
 
 export default function Brands() {
+  const [brandName, setBrandName] = useState('')
+  const [brandCode, setBrandCode] = useState('')
+  const [showImport, setShowImport] = useState(false)
+
+  useEffect(() => {
+    if (brandName.trim()) {
+      setBrandCode(genBrandCode(brandName))
+    } else {
+      setBrandCode('')
+    }
+  }, [brandName])
+
   return (
     <div className="container-fluid">
       <div className="gap-2 page-heading mb-3 flex-column flex-md-row">
@@ -103,6 +132,7 @@ export default function Brands() {
                       <div className="card-header">
                           <div className="d-flex align-items-center justify-content-between gap-3 mb-4">
                               <h5 className="card-title mb-0">Total Brands</h5>
+                              <button type="button" className="btn btn-outline-secondary me-1" onClick={() => setShowImport(true)}><i className="ri-upload-cloud-2-line me-1"></i>Import</button>
                               <button type="button" className="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addBrandModal"><i className="ri-add-line me-1"></i>Add Brand</button>
                           </div>
                           <div className="d-flex flex-wrap gap-2 justify-content-between align-items-center">
@@ -1700,11 +1730,26 @@ export default function Brands() {
                                   </div>
                                   <div className="col-12">
                                       <label htmlFor="brandName" className="form-label">Brand Name <span className="text-danger">*</span></label>
-                                      <input type="text" className="form-control" placeholder="Enter Brand Name" id="brandName" required />
+                                      <input
+                                        type="text"
+                                        className="form-control"
+                                        placeholder="Enter Brand Name"
+                                        id="brandName"
+                                        required
+                                        value={brandName}
+                                        onChange={e => setBrandName(e.target.value)}
+                                      />
                                   </div>
                                   <div className="col-12">
-                                      <label htmlFor="brandCode" className="form-label">Brand Code <span className="text-danger">*</span></label>
-                                      <input type="text" className="form-control" placeholder="Enter Brand Code" id="brandCode" required />
+                                      <label htmlFor="brandCode" className="form-label">Brand Code <span className="text-muted fw-normal">(auto-generated)</span></label>
+                                      <input
+                                        type="text"
+                                        className="form-control bg-light"
+                                        placeholder="Type brand name to generate code"
+                                        id="brandCode"
+                                        readOnly
+                                        value={brandCode}
+                                      />
                                   </div>
                                   <div className="col-12">
                                       <label htmlFor="category" className="form-label">Category <span className="text-danger">*</span></label>
@@ -1773,6 +1818,17 @@ export default function Brands() {
                   </div>
               </div>
           </div>
+      {showImport && (
+        <ImportModal
+          entityName="Brands"
+          fields={BRAND_IMPORT_FIELDS}
+          onImport={(rows) => {
+            console.log('Imported brands:', rows)
+            setShowImport(false)
+          }}
+          onClose={() => setShowImport(false)}
+        />
+      )}
     </div>
   )
 }

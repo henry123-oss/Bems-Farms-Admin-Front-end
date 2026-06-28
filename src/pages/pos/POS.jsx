@@ -221,6 +221,16 @@ export default function POS() {
   // Success data
   const [successData, setSuccessData]   = useState(null)
 
+  // Goods Return modal
+  const POS_RETURN_REASONS = ['Damaged on delivery','Wrong item sent','Quality below standard','Spoiled / Already expired','Item missing from order','Incorrect quantity','Customer changed mind','Packaging damaged']
+  const [returnForm, setReturnForm] = useState({
+    customer:'Walk-in', phone:'', product:PRODUCTS[0], qty:1, unitPrice:PRODUCTS[0].price,
+    reason:POS_RETURN_REASONS[0], notes:'', condition:'resalable', refundMethod:'Cash',
+  })
+  const [returnStep, setReturnStep]     = useState(1)  // 1=details 2=inspect+refund
+  const [returnLogs, setReturnLogs]     = useState([])
+  const [returnSuccess, setReturnSuccess] = useState(null)
+
   const scanInputRef = useRef(null)
 
   // ── Barcode scanner ───────────────────────────────────────────────────────
@@ -428,13 +438,14 @@ export default function POS() {
     <div style={{ height:'100vh', display:'flex', flexDirection:'column', overflow:'hidden', background:'var(--bs-body-bg)', color:'var(--bs-body-color)' }}>
 
       {/* ═══ TOPBAR ═══════════════════════════════════════════════════════ */}
-      <header className="border-bottom" style={{ height:58, flexShrink:0, display:'flex', alignItems:'center', gap:12, padding:'0 16px', zIndex:200, background:'var(--bs-body-bg)' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:8, fontWeight:800, fontSize:15, color:'#0ab39c', minWidth:140, flexShrink:0 }}>
+      <header className="border-bottom" style={{ height:58, flexShrink:0, display:'flex', alignItems:'center', padding:'0 16px', zIndex:200, background:'var(--bs-body-bg)' }}>
+        {/* Logo — left */}
+        <div style={{ flex:1, display:'flex', alignItems:'center', gap:8, fontWeight:800, fontSize:15, color:'#0ab39c' }}>
           <span style={{ fontSize:24 }}>🌾</span>
           <span>Bems Farms<br/><span style={{ fontSize:9, fontWeight:500, color:'var(--bs-secondary-color)', letterSpacing:1 }}>POINT OF SALE</span></span>
         </div>
-        {/* Unified search + scanner — centred in topbar */}
-        <div style={{ position:'relative', flex:1, maxWidth:560 }}>
+        {/* Unified search + scanner — truly centred */}
+        <div style={{ position:'relative', width:'100%', maxWidth:520 }}>
           <i className="ri-search-line" style={{ position:'absolute', left:12, top:'50%', transform:'translateY(-50%)', color:'#0ab39c', fontSize:15, pointerEvents:'none' }}></i>
           <input
             id="scan-field"
@@ -452,7 +463,8 @@ export default function POS() {
             : <span style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', fontSize:9, color:'#0ab39c', fontWeight:700, letterSpacing:.5, pointerEvents:'none' }}>SCANNER READY</span>
           }
         </div>
-        <div style={{ display:'flex', alignItems:'center', gap:8, marginLeft:'auto' }}>
+        {/* Right controls */}
+        <div style={{ flex:1, display:'flex', alignItems:'center', gap:8, justifyContent:'flex-end' }}>
           <div style={{ fontSize:12, color:'var(--bs-secondary-color)', textAlign:'right' }}>
             <div style={{ fontWeight:600 }}>{now.toLocaleTimeString('en-NG',{hour:'2-digit',minute:'2-digit'})}</div>
             <div style={{ fontSize:10 }}>{now.toLocaleDateString('en-NG',{day:'numeric',month:'short',year:'numeric'})}</div>
@@ -517,6 +529,38 @@ export default function POS() {
                 </button>
               )
             })()}
+
+            {/* Goods Return */}
+            <button
+              onClick={() => { setReturnForm(f=>({...f,product:PRODUCTS[0],unitPrice:PRODUCTS[0].price,qty:1,customer:'Walk-in',phone:'',notes:'',condition:'resalable',refundMethod:'Cash',reason:POS_RETURN_REASONS[0]})); setReturnStep(1); setReturnSuccess(null); setActiveModal('return') }}
+              style={{ flex:1, display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderRadius:14, border:'1px solid rgba(240,101,72,.25)', background:'var(--bs-body-bg)', cursor:'pointer', textAlign:'left', boxShadow:'0 2px 8px rgba(240,101,72,.12)', transition:'box-shadow .2s' }}
+              onMouseEnter={e => e.currentTarget.style.boxShadow='0 4px 16px rgba(240,101,72,.22)'}
+              onMouseLeave={e => e.currentTarget.style.boxShadow='0 2px 8px rgba(240,101,72,.12)'}>
+              <div style={{ width:44, height:44, borderRadius:12, background:'linear-gradient(135deg,#f06548,#e04b2f)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 4px 12px rgba(240,101,72,.35)' }}>
+                <i className="ri-arrow-go-back-line" style={{ fontSize:22, color:'#fff' }}></i>
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontWeight:700, fontSize:13, color:'var(--bs-body-color)', letterSpacing:.2 }}>Goods Return</div>
+                <div style={{ fontSize:11, color:'var(--bs-secondary-color)', marginTop:2 }}>Process a customer return &amp; refund</div>
+              </div>
+              {returnLogs.length > 0
+                ? <span style={{ background:'#f06548', color:'#fff', borderRadius:20, padding:'3px 10px', fontSize:11, fontWeight:700, flexShrink:0 }}>{returnLogs.length}</span>
+                : <i className="ri-arrow-right-s-line" style={{ fontSize:18, color:'#f06548', flexShrink:0 }}></i>
+              }
+            </button>
+          </div>
+
+          {/* Category pills */}
+          <div style={{ padding:'10px 16px', borderBottom:'1px solid var(--bs-border-color)', display:'flex', gap:6, overflowX:'auto', flexShrink:0, scrollbarWidth:'none', background:'var(--bs-body-bg)' }}>
+            {CATEGORIES.map(cat => {
+              const active = activeCategory === cat.id; const color = CAT_COLORS[cat.id]
+              return (
+                <button key={cat.id} onClick={() => setActiveCategory(cat.id)}
+                  style={{ display:'flex', alignItems:'center', gap:6, padding:'6px 14px', borderRadius:20, border:`2px solid ${active ? color : 'var(--bs-border-color)'}`, background: active ? color : 'transparent', color: active ? '#fff' : 'var(--bs-body-color)', fontSize:12, fontWeight:600, whiteSpace:'nowrap', cursor:'pointer', flexShrink:0 }}>
+                  <span style={{ fontSize:15 }}>{cat.emoji}</span> {cat.label}
+                </button>
+              )
+            })}
           </div>
 
           {/* Grid */}
@@ -1486,6 +1530,231 @@ export default function POS() {
           </div>
         </div>
       )}
+
+      {/* ─── Goods Return Modal ─────────────────────────────────────────── */}
+      {activeModal === 'return' && (() => {
+        const retTotal = Number(returnForm.qty) * Number(returnForm.unitPrice)
+        function submitReturn() {
+          const ref = 'RTN-POS-' + String(Date.now()).slice(-5)
+          setReturnLogs(prev => [...prev, { ...returnForm, ref, total:retTotal, date:new Date().toLocaleString('en-NG') }])
+          setReturnSuccess({ ref, total:retTotal, method:returnForm.refundMethod, condition:returnForm.condition })
+        }
+        if (returnSuccess) return (
+          <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.55)', zIndex:820, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
+            <div style={{ background:'var(--bs-modal-bg,#fff)', borderRadius:16, maxWidth:360, width:'100%', padding:32, textAlign:'center', boxShadow:'0 24px 48px rgba(0,0,0,.3)' }}>
+              <div style={{ width:72, height:72, borderRadius:'50%', background:'#0ab39c', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:32 }}>✅</div>
+              <h6 className="fw-bold mb-1">Return Processed</h6>
+              <div className="text-muted mb-3" style={{ fontSize:13 }}>{returnSuccess.ref}</div>
+              <div className="rounded p-3 mb-4" style={{ background:'var(--bs-body-secondary-bg)', fontSize:13, textAlign:'left' }}>
+                <div className="d-flex justify-content-between mb-1"><span className="text-muted">Refund Amount</span><span className="fw-bold text-danger">₦{returnSuccess.total.toLocaleString()}</span></div>
+                <div className="d-flex justify-content-between mb-1"><span className="text-muted">Method</span><span>{returnSuccess.method}</span></div>
+                <div className="d-flex justify-content-between"><span className="text-muted">Goods</span><span>{{resalable:'Back to stock',damaged:'Written off',partial:'Split'	}[returnSuccess.condition]}</span></div>
+              </div>
+              <button className="btn btn-primary w-100" onClick={closeModal}>Done</button>
+            </div>
+          </div>
+        )
+        return (
+          <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.55)', zIndex:820, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
+            <div style={{ background:'var(--bs-modal-bg,#fff)', borderRadius:16, maxWidth:600, width:'100%', boxShadow:'0 24px 48px rgba(0,0,0,.3)', overflow:'hidden' }}>
+
+              {/* Header */}
+              <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--bs-border-color)', display:'flex', alignItems:'center', justifyContent:'space-between', background:'var(--bs-body-secondary-bg)' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  <div style={{ width:36, height:36, borderRadius:10, background:'linear-gradient(135deg,#f06548,#e04b2f)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <i className="ri-arrow-go-back-line" style={{ fontSize:18, color:'#fff' }}></i>
+                  </div>
+                  <div>
+                    <div style={{ fontWeight:700, fontSize:14 }}>Goods Return</div>
+                    <div style={{ fontSize:11, color:'var(--bs-secondary-color)' }}>Step {returnStep} of 2</div>
+                  </div>
+                </div>
+                <button className="btn-close" onClick={closeModal}></button>
+              </div>
+
+              {/* Step indicators */}
+              <div style={{ display:'flex', gap:0, borderBottom:'1px solid var(--bs-border-color)' }}>
+                {[{n:1,label:'Return Details'},{n:2,label:'Inspect & Refund'}].map(s=>(
+                  <div key={s.n} style={{ flex:1, padding:'10px 16px', textAlign:'center', fontSize:12, fontWeight: returnStep===s.n?700:400, color: returnStep===s.n?'#f06548':'var(--bs-secondary-color)', borderBottom: returnStep===s.n?'3px solid #f06548':'3px solid transparent', cursor:'pointer', background:'var(--bs-body-bg)' }}
+                    onClick={() => returnStep > s.n && setReturnStep(s.n)}>
+                    <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', width:20, height:20, borderRadius:'50%', background: returnStep>=s.n?'#f06548':'var(--bs-border-color)', color: returnStep>=s.n?'#fff':'var(--bs-secondary-color)', fontSize:10, fontWeight:700, marginRight:6 }}>{s.n}</span>
+                    {s.label}
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ padding:20, maxHeight:'70vh', overflowY:'auto' }}>
+
+                {/* ── STEP 1: Details ── */}
+                {returnStep === 1 && (
+                  <div className="row g-3">
+
+                    {/* Barcode scan field */}
+                    <div className="col-12">
+                      <label className="form-label fw-medium" style={{ fontSize:13 }}>
+                        <i className="ri-barcode-line me-1 text-danger"></i>Scan Barcode / Enter SKU
+                      </label>
+                      <div className="position-relative">
+                        <input
+                          autoFocus
+                          className="form-control form-control-sm ps-9"
+                          placeholder="Scan barcode or type SKU + Enter  (e.g. BF-VEG-001 or VEG-001)"
+                          style={{ borderColor:'#f06548', boxShadow:'0 0 0 3px rgba(240,101,72,.1)' }}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                              const code = e.target.value.trim().toUpperCase()
+                              const found = BY_BARCODE[code] || BY_BARCODE['BF-' + code] || BY_SKU[code]
+                              if (found) {
+                                setReturnForm(f=>({...f, product:found, unitPrice:found.price}))
+                                showToast(`${found.name} selected`, 'success', found.icon)
+                                e.target.value = ''
+                              } else {
+                                showToast('Product not found: ' + code, 'error', '❌')
+                              }
+                            }
+                          }}
+                        />
+                        <i className="ri-barcode-line position-absolute top-50 start-0 ms-3 translate-middle-y text-danger"></i>
+                      </div>
+                      <div className="form-text">Or select manually from the dropdown below</div>
+                    </div>
+
+                    {/* Selected product preview */}
+                    {returnForm.product && (
+                      <div className="col-12">
+                        <div className="d-flex align-items-center gap-3 p-2 rounded" style={{ background:'rgba(240,101,72,.08)', border:'1px solid rgba(240,101,72,.25)' }}>
+                          <span style={{ fontSize:28 }}>{returnForm.product.icon}</span>
+                          <div style={{ flex:1 }}>
+                            <div className="fw-bold" style={{ fontSize:13 }}>{returnForm.product.name}</div>
+                            <div className="text-muted" style={{ fontSize:11 }}>{returnForm.product.sku} · ₦{returnForm.product.price.toLocaleString()} / {returnForm.product.unit}</div>
+                          </div>
+                          <span className="badge bg-danger-subtle text-danger border border-danger-subtle" style={{ fontSize:10 }}>Selected</span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="col-12">
+                      <label className="form-label fw-medium" style={{ fontSize:13 }}>Product Being Returned <span className="text-danger">*</span></label>
+                      <select className="form-select form-select-sm" value={returnForm.product.id}
+                        onChange={e => { const p=PRODUCTS.find(p=>p.id===Number(e.target.value)); setReturnForm(f=>({...f,product:p,unitPrice:p.price})) }}>
+                        {PRODUCTS.map(p=><option key={p.id} value={p.id}>{p.icon} {p.name} — ₦{p.price.toLocaleString()} / {p.unit}</option>)}
+                      </select>
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label fw-medium" style={{ fontSize:13 }}>Customer Name</label>
+                      <input className="form-control form-control-sm" placeholder="Walk-in / Customer name" value={returnForm.customer}
+                        onChange={e => setReturnForm(f=>({...f,customer:e.target.value}))} />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="form-label fw-medium" style={{ fontSize:13 }}>Phone (optional)</label>
+                      <input className="form-control form-control-sm" placeholder="0800 000 0000" value={returnForm.phone}
+                        onChange={e => setReturnForm(f=>({...f,phone:e.target.value}))} />
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label fw-medium" style={{ fontSize:13 }}>Quantity</label>
+                      <input type="number" className="form-control form-control-sm" min="1" value={returnForm.qty}
+                        onChange={e => setReturnForm(f=>({...f,qty:Number(e.target.value)}))} />
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label fw-medium" style={{ fontSize:13 }}>Unit Price (₦)</label>
+                      <input type="number" className="form-control form-control-sm" min="0" value={returnForm.unitPrice}
+                        onChange={e => setReturnForm(f=>({...f,unitPrice:Number(e.target.value)}))} />
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label fw-medium" style={{ fontSize:13 }}>Return Value</label>
+                      <input className="form-control form-control-sm bg-light fw-bold text-danger" readOnly value={`₦${retTotal.toLocaleString()}`} />
+                    </div>
+                    <div className="col-12">
+                      <label className="form-label fw-medium" style={{ fontSize:13 }}>Return Reason <span className="text-danger">*</span></label>
+                      <select className="form-select form-select-sm" value={returnForm.reason}
+                        onChange={e => setReturnForm(f=>({...f,reason:e.target.value}))}>
+                        {POS_RETURN_REASONS.map(r=><option key={r}>{r}</option>)}
+                      </select>
+                    </div>
+                    <div className="col-12">
+                      <label className="form-label fw-medium" style={{ fontSize:13 }}>Customer Notes</label>
+                      <textarea className="form-control form-control-sm" rows="2" placeholder="What did the customer say?" value={returnForm.notes}
+                        onChange={e => setReturnForm(f=>({...f,notes:e.target.value}))} />
+                    </div>
+                    <div className="col-12 d-flex gap-2 pt-2">
+                      <button className="btn btn-light w-100" onClick={closeModal}>Cancel</button>
+                      <button className="btn btn-danger w-100" onClick={() => setReturnStep(2)} disabled={!returnForm.product||returnForm.qty<1}>
+                        Next: Inspect Goods <i className="ri-arrow-right-line ms-1"></i>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── STEP 2: Inspect + Refund ── */}
+                {returnStep === 2 && (
+                  <>
+                    {/* Return summary */}
+                    <div className="p-3 rounded mb-4" style={{ background:'var(--bs-body-secondary-bg)', border:'1px solid var(--bs-border-color)', fontSize:13 }}>
+                      <div className="d-flex justify-content-between mb-1">
+                        <span className="text-muted">Product</span>
+                        <span className="fw-medium">{returnForm.product.icon} {returnForm.product.name}</span>
+                      </div>
+                      <div className="d-flex justify-content-between mb-1">
+                        <span className="text-muted">Qty · Reason</span>
+                        <span>{returnForm.qty} {returnForm.product.unit} · {returnForm.reason}</span>
+                      </div>
+                      <div className="d-flex justify-content-between">
+                        <span className="text-muted">Refund Value</span>
+                        <span className="fw-bold text-danger">₦{retTotal.toLocaleString()}</span>
+                      </div>
+                    </div>
+
+                    {/* Goods condition */}
+                    <div className="mb-4">
+                      <label className="form-label fw-medium" style={{ fontSize:13 }}>Goods Condition <span className="text-danger">*</span></label>
+                      <div className="row g-2">
+                        {[
+                          { val:'resalable', icon:'ri-checkbox-circle-line', color:'#0ab39c', title:'Resalable',        desc:'Good condition — return to stock' },
+                          { val:'damaged',   icon:'ri-close-circle-line',    color:'#f06548', title:'Damaged / Spoiled',desc:'Write off — cannot resell'        },
+                          { val:'partial',   icon:'ri-indeterminate-circle-line', color:'#f7b84b', title:'Partially Good',  desc:'Some back to stock, rest written off' },
+                        ].map(opt => (
+                          <div className="col-4" key={opt.val}>
+                            <div onClick={() => setReturnForm(f=>({...f,condition:opt.val}))}
+                              style={{ padding:'12px 8px', borderRadius:10, border:`2px solid ${returnForm.condition===opt.val?opt.color:'var(--bs-border-color)'}`, background: returnForm.condition===opt.val?`${opt.color}12`:'transparent', cursor:'pointer', textAlign:'center' }}>
+                              <i className={`${opt.icon} d-block fs-20 mb-1`} style={{ color:opt.color }}></i>
+                              <div style={{ fontSize:11, fontWeight:700, color:opt.color }}>{opt.title}</div>
+                              <div className="text-muted mt-1" style={{ fontSize:10 }}>{opt.desc}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Refund method */}
+                    <div className="mb-4">
+                      <label className="form-label fw-medium" style={{ fontSize:13 }}>Refund Method</label>
+                      <div className="d-flex gap-2">
+                        {['Cash','Wallet Credit','Bank Transfer'].map(m => (
+                          <button key={m} type="button"
+                            className={`btn btn-sm flex-grow-1 ${returnForm.refundMethod===m?'btn-danger':'btn-outline-secondary'}`}
+                            onClick={() => setReturnForm(f=>({...f,refundMethod:m}))}>
+                            {m==='Cash'?'💵':m==='Wallet Credit'?'👛':'🏦'} {m}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="d-flex gap-2 pt-2">
+                      <button className="btn btn-light" style={{ minWidth:100 }} onClick={() => setReturnStep(1)}>
+                        <i className="ri-arrow-left-line me-1"></i> Back
+                      </button>
+                      <button className="btn btn-danger flex-grow-1 fw-medium" onClick={submitReturn}>
+                        <i className="ri-check-double-line me-1"></i>
+                        Confirm Return · Refund ₦{retTotal.toLocaleString()} via {returnForm.refundMethod}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ═══ SCAN TOAST ═══════════════════════════════════════════════════ */}
       {toast && (

@@ -4,15 +4,39 @@ import api from '../lib/api'
 const AuthContext = createContext(null)
 
 // ── DEV BYPASS ────────────────────────────────────────────────────
-// Remove this block once the real Express backend is running.
 const DEV_USERS = {
+  'superadmin@bemsfarms.com': {
+    password: 'super123',
+    user: { id: 'dev-1', first_name: 'Seun', last_name: 'Adeyemi', email: 'superadmin@bemsfarms.com', role: 'superadmin' },
+  },
+  'manager@bemsfarms.com': {
+    password: 'manager123',
+    user: { id: 'dev-2', first_name: 'Tunde', last_name: 'Okafor', email: 'manager@bemsfarms.com', role: 'manager' },
+  },
+  'accountant@bemsfarms.com': {
+    password: 'account123',
+    user: { id: 'dev-3', first_name: 'Ngozi', last_name: 'Eze', email: 'accountant@bemsfarms.com', role: 'accountant' },
+  },
+  'delivery@bemsfarms.com': {
+    password: 'delivery123',
+    user: { id: 'dev-4', first_name: 'Emeka', last_name: 'Nwosu', email: 'delivery@bemsfarms.com', role: 'delivery_manager' },
+  },
+  'cashier@bemsfarms.com': {
+    password: 'cashier123',
+    user: { id: 'dev-5', first_name: 'Kemi', last_name: 'Balogun', email: 'cashier@bemsfarms.com', role: 'cashier' },
+  },
+  'kitchen@bemsfarms.com': {
+    password: 'kitchen123',
+    user: { id: 'dev-6', first_name: 'Chidi', last_name: 'Obiora', email: 'kitchen@bemsfarms.com', role: 'kitchen_staff' },
+  },
+  // Legacy fallbacks
   'admin@bemsfarms.com': {
     password: 'admin123',
     user: { id: 'dev-1', first_name: 'Admin', last_name: 'Seun', email: 'admin@bemsfarms.com', role: 'superadmin' },
   },
   'staff@bemsfarms.com': {
     password: 'staff123',
-    user: { id: 'dev-2', first_name: 'Kemi', last_name: 'Balogun', email: 'staff@bemsfarms.com', role: 'store_staff' },
+    user: { id: 'dev-5', first_name: 'Kemi', last_name: 'Balogun', email: 'staff@bemsfarms.com', role: 'cashier' },
   },
 }
 const DEV_MODE = import.meta.env.VITE_API_URL?.includes('localhost') || !import.meta.env.VITE_API_URL
@@ -29,16 +53,10 @@ export function AuthProvider({ children }) {
   })
   const [loading, setLoading] = useState(true)
 
-  // Verify token on mount
   useEffect(() => {
     const token = localStorage.getItem('bems_token')
     if (!token) { setLoading(false); return }
-
-    // Dev mode: token is a dev sentinel — just restore user from storage
-    if (DEV_MODE && token === 'dev-token') {
-      setLoading(false)
-      return
-    }
+    if (DEV_MODE && token === 'dev-token') { setLoading(false); return }
 
     api.get('/auth/me')
       .then((res) => setUser(res.data.user))
@@ -51,7 +69,6 @@ export function AuthProvider({ children }) {
   }, [])
 
   const login = useCallback(async (email, password) => {
-    // ── Dev bypass ──────────────────────────────────────────────
     if (DEV_MODE) {
       const match = DEV_USERS[email.toLowerCase()]
       if (match && match.password === password) {
@@ -62,7 +79,6 @@ export function AuthProvider({ children }) {
       }
       throw { response: { data: { message: 'Invalid credentials (dev mode)' } } }
     }
-    // ── Production ──────────────────────────────────────────────
     const res = await api.post('/auth/login', { email, password })
     const { token, user: userData } = res.data
     localStorage.setItem('bems_token', token)
@@ -77,13 +93,20 @@ export function AuthProvider({ children }) {
     setUser(null)
   }, [])
 
+  /** Check if current user has at least one of the given roles. */
   const hasRole = useCallback(
     (...roles) => user && roles.includes(user.role),
     [user]
   )
 
+  /** Check if current user can access a section (pass an allowedRoles array). */
+  const canAccess = useCallback(
+    (allowedRoles) => user && allowedRoles.includes(user.role),
+    [user]
+  )
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, hasRole }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, hasRole, canAccess }}>
       {children}
     </AuthContext.Provider>
   )

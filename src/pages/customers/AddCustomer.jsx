@@ -1,320 +1,260 @@
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { useNavigate, Link } from 'react-router-dom'
+
+const ZONES = ['Lekki Phase 1','Lekki Phase 2','Victoria Island','Ikoyi','Ajah','Sangotedo','Ikeja GRA','Maryland','Gbagada','Surulere','Yaba','Ogba','Oshodi','Anthony Village','Ikorodu','Opebi','Oworonshoki','Festac','Amuwo Odofin','Isolo','Mushin','Ketu','Mile 12','Agege']
+const REFS = ['Friend/Family Referral','Social Media (Instagram)','Social Media (Facebook)','Google Search','WhatsApp','Flyer/Poster','Walk-in / Market','TV/Radio','Other']
 
 export default function AddCustomer() {
+  const navigate = useNavigate()
+  const [form, setForm] = useState({
+    firstName:'', lastName:'', phone:'', altPhone:'', email:'',
+    zone:'Lekki Phase 1', address:'', landmark:'',
+    tier:'Bronze', status:'active', referral:'', notes:'',
+    marketingConsent:false, smsAlerts:true,
+  })
+  const [submitted, setSubmitted] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  const fld = (k,v) => setForm(f => ({ ...f, [k]:v }))
+  const valid = form.firstName.trim() && form.lastName.trim() && form.phone.trim().length >= 11
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    setSubmitted(true)
+    if (!valid) return
+    setSaved(true)
+  }
+
+  if (saved) return (
+    <div className="container-fluid">
+      <div className="d-flex flex-column align-items-center justify-content-center py-5">
+        <div className="rounded-circle d-flex align-items-center justify-content-center mb-4"
+          style={{width:80,height:80,background:'#f0fdf4'}}>
+          <i className="ri-user-follow-line" style={{fontSize:36,color:'#22c55e'}}/>
+        </div>
+        <h5 className="fw-bold mb-1">Customer Added!</h5>
+        <p className="text-muted mb-4">{form.firstName} {form.lastName} has been registered successfully.</p>
+        <div className="d-flex gap-3">
+          <button className="btn btn-outline-secondary" onClick={()=>{ setSaved(false); setSubmitted(false); setForm({firstName:'',lastName:'',phone:'',altPhone:'',email:'',zone:'Lekki Phase 1',address:'',landmark:'',tier:'Bronze',status:'active',referral:'',notes:'',marketingConsent:false,smsAlerts:true}) }}>
+            Add Another
+          </button>
+          <Link to="/customers" className="btn btn-primary">View All Customers</Link>
+        </div>
+      </div>
+    </div>
+  )
+
   return (
     <div className="container-fluid">
-      <div className="gap-2 page-heading mb-3 flex-column flex-md-row">
-              <h6 className="flex-grow-1 mb-0">Customers Add</h6>
-              <ul className="breadcrumb flex-shrink-0 mb-0">
-                  <li className="breadcrumb-item"><a href="#">Customers</a></li>
-                  <li className="breadcrumb-item active">Customers Add</li>
-              </ul>
-          </div>
-          <div className="row g-4">
-              <div className="col-xl-7 col-xxl-8 order-2 order-xl-1">
-                  <div className="card">
-                      <div className="card-body">
-                          <div className="tab-content" id="customerPillsTabContent">
-                              <div className="tab-pane fade show active" id="basic-info" role="tabpanel" aria-labelledby="basic-info-tab">
-                                  <h5 className="card-title mb-2 fs-16">Basic Information</h5>
-                                  <p className="text-muted mb-6">Enter the essential details for the customer including name, email, phone, and type.</p>
-                                  <form>
-                                      <div className="row g-5">
-                                          <div className="col-12">
-                                              <label htmlFor="customerName" className="form-label">Full Name <span className="text-danger">*</span></label>
-                                              <input type="text" className="form-control" id="customerName" placeholder="Enter full name" required />
-                                          </div>
-                                          <div className="col-md-6">
-                                              <label htmlFor="customerEmail" className="form-label">Email <span className="text-danger">*</span></label>
-                                              <input type="email" className="form-control" id="customerEmail" placeholder="Enter email" required />
-                                          </div>
-                                          <div className="col-md-6">
-                                              <label htmlFor="customerSecondaryEmail" className="form-label">Secondary Email</label>
-                                              <input type="email" className="form-control" id="customerSecondaryEmail" placeholder="Enter secondary email" />
-                                          </div>
-                                          <div className="col-md-6">
-                                              <label htmlFor="customerPhone" className="form-label">Phone <span className="text-danger">*</span></label>
-                                              <input type="tel" className="form-control" id="customerPhone" placeholder="Enter phone number" required />
-                                          </div>
-                                          <div className="col-md-6">
-                                              <label htmlFor="customerAltPhone" className="form-label">Alternate Phone</label>
-                                              <input type="tel" className="form-control" id="customerAltPhone" placeholder="Enter alternate phone" />
-                                          </div>
-                                          <div className="col-md-6">
-                                              <label className="form-label d-block">Gender</label>
-                                              <div className="form-check form-check-inline">
-                                                  <input className="form-check-input" type="radio" name="gender" id="genderMale" defaultValue="male" defaultChecked />
-                                                  <label className="form-check-label" htmlFor="genderMale">Male</label>
-                                              </div>
-                                              <div className="form-check form-check-inline">
-                                                  <input className="form-check-input" type="radio" name="gender" id="genderFemale" defaultValue="female" />
-                                                  <label className="form-check-label" htmlFor="genderFemale">Female</label>
-                                              </div>
-                                              <div className="form-check form-check-inline">
-                                                  <input className="form-check-input" type="radio" name="gender" id="genderOther" defaultValue="other" />
-                                                  <label className="form-check-label" htmlFor="genderOther">Other</label>
-                                              </div>
-                                          </div>
-                                          <div className="col-md-6">
-                                              <label htmlFor="customerDOB" className="form-label">Date of Birth</label>
-                                              <input type="text" className="form-control" data-datepicker data-date-format="dd-MM-yyyy" placeholder="Choose date" />
-                                          </div>
-                                          <div className="col-md-6">
-                                              <label htmlFor="customerType" className="form-label">Customer Type</label>
-                                              <div id="customerType"></div>
-                                          </div>
-                                          <div className="col-md-6">
-                                              <label htmlFor="customerCompany" className="form-label">Company / Organization</label>
-                                              <input type="text" className="form-control" id="customerCompany" placeholder="Enter company name" />
-                                          </div>
-                                          <div className="col-12">
-                                              <label htmlFor="customerDesignation" className="form-label">Designation / Job Title</label>
-                                              <input type="text" className="form-control" id="customerDesignation" placeholder="Enter designation" />
-                                          </div>
-                                          <div className="col-md-6">
-                                              <label htmlFor="customerWebsite" className="form-label">Website / Social Profile</label>
-                                              <input type="url" className="form-control" id="customerWebsite" placeholder="Enter website or social link" />
-                                          </div>
-                                          <div className="col-md-6">
-                                              <label htmlFor="customerStatus" className="form-label">Status</label>
-                                              <div id="customerStatus"></div>
-                                          </div>
-                                          <div className="col-12">
-                                              <label htmlFor="customerNotes" className="form-label">Notes</label>
-                                              <textarea className="form-control" id="customerNotes" rows="3" placeholder="Enter additional notes"></textarea>
-                                          </div>
-                                          <div className="col-12">
-                                              <label className="form-label d-block">Preferred Contact Method</label>
-                                              <div className="form-check form-check-inline">
-                                                  <input className="form-check-input" type="checkbox" id="contactEmail" defaultValue="email" />
-                                                  <label className="form-check-label" htmlFor="contactEmail">Email</label>
-                                              </div>
-                                              <div className="form-check form-check-inline">
-                                                  <input className="form-check-input" type="checkbox" id="contactPhone" defaultValue="phone" />
-                                                  <label className="form-check-label" htmlFor="contactPhone">Phone</label>
-                                              </div>
-                                              <div className="form-check form-check-inline">
-                                                  <input className="form-check-input" type="checkbox" id="contactWhatsApp" defaultValue="whatsapp" />
-                                                  <label className="form-check-label" htmlFor="contactWhatsApp">WhatsApp</label>
-                                              </div>
-                                          </div>
-                                          <div className="col-12 text-end">
-                                              <button type="submit" className="btn btn-outline-light border me-1"><i className="ri-arrow-left-line me-1"></i>Prev</button>
-                                              <button type="submit" className="btn btn-primary">Next <i className="ri-arrow-right-line ms-1"></i></button>
-                                          </div>
-                                      </div>
-                                  </form>
-                              </div>
-                              <div className="tab-pane fade" id="address" role="tabpanel" aria-labelledby="address-tab">
-                                  <h5 className="card-title mb-2 fs-16">Customer Address</h5>
-                                  <p className="text-muted mb-6">Fill in the customer's complete address details for accurate records and communication.</p>
-                                  <div className="row g-5">
-                                      <div className="col-12">
-                                          <label htmlFor="customerAddress" className="form-label">Street Address</label>
-                                          <input type="text" className="form-control" id="customerAddress" placeholder="Enter street address" />
-                                      </div>
-                                      <div className="col-md-8">
-                                          <label htmlFor="customerAddressLine2" className="form-label">Address Line 2</label>
-                                          <input type="text" className="form-control" id="customerAddressLine2" placeholder="Apartment, suite, etc. (optional)" />
-                                      </div>
-                                      <div className="col-md-6 col-xxl-4">
-                                          <label htmlFor="customerCity" className="form-label">City</label>
-                                          <input type="text" className="form-control" id="customerCity" placeholder="Enter city" />
-                                      </div>
-                                      <div className="col-md-6 col-xxl-4">
-                                          <label htmlFor="customerState" className="form-label">State / Province</label>
-                                          <input type="text" className="form-control" id="customerState" placeholder="Enter state" />
-                                      </div>
-                                      <div className="col-md-6 col-xxl-4">
-                                          <label htmlFor="customerZip" className="form-label">ZIP / Postal Code</label>
-                                          <input type="text" className="form-control" id="customerZip" placeholder="Enter ZIP code" />
-                                      </div>
-                                      <div className="col-md-6 col-xxl-4">
-                                          <label htmlFor="customerCountry" className="form-label">Country</label>
-                                          <div id="customerCountry"></div>
-                                      </div>
-                                      <div className="col-md-6 col-xxl-4">
-                                          <label htmlFor="customerAddressType" className="form-label">Address Type</label>
-                                          <div id="customerAddressType"></div>
-                                      </div>
-                                      <div className="col-xxl-8">
-                                          <label htmlFor="customerLandmark" className="form-label">Landmark</label>
-                                          <input type="text" className="form-control" id="customerLandmark" placeholder="Enter nearby landmark (optional)" />
-                                      </div>
-                                      <div className="col-12">
-                                          <label htmlFor="customerNotes" className="form-label">Notes</label>
-                                          <textarea className="form-control" id="customerNotes" rows="3" placeholder="Any additional address instructions or notes"></textarea>
-                                      </div>
-                                      <div className="col-12 text-end">
-                                          <button type="submit" className="btn btn-outline-light border me-1"><i className="ri-arrow-left-line me-1"></i>Prev</button>
-                                          <button type="submit" className="btn btn-primary">Next <i className="ri-arrow-right-line ms-1"></i></button>
-                                      </div>
-                                  </div>
-                              </div>
-                              <div className="tab-pane fade" id="membership" role="tabpanel" aria-labelledby="membership-tab">
-                                  <h5 className="card-title mb-2 fs-16">Customer Membership</h5>
-                                  <p className="text-muted mb-6">Manage the customer's membership plan, duration, benefits, and status for accurate tracking.</p>
-                                  <div className="row g-5">
-                                      <div className="col-md-6">
-                                          <label htmlFor="membershipPlan" className="form-label">Membership Plan</label>
-                                          <div id="membershipPlan"></div>
-                                      </div>
-                                      <div className="col-md-6">
-                                          <label htmlFor="membershipStart" className="form-label">Start Date</label>
-                                          <input type="text" className="form-control" data-datepicker data-date-format="dd-MM-yyyy" placeholder="Choose start date" />
-                                      </div>
-                                      <div className="col-md-6">
-                                          <label htmlFor="membershipEnd" className="form-label">End Date</label>
-                                          <input type="text" className="form-control" data-datepicker data-date-format="dd-MM-yyyy" placeholder="Choose End date" />
-                                      </div>
-                                      <div className="col-md-6">
-                                          <label className="form-label d-block">Status</label>
-                                          <div className="form-check form-check-inline">
-                                              <input className="form-check-input" type="radio" name="membershipStatus" id="statusActive" defaultValue="active" defaultChecked />
-                                              <label className="form-check-label" htmlFor="statusActive">Active</label>
-                                          </div>
-                                          <div className="form-check form-check-inline">
-                                              <input className="form-check-input" type="radio" name="membershipStatus" id="statusInactive" defaultValue="inactive" />
-                                              <label className="form-check-label" htmlFor="statusInactive">Inactive</label>
-                                          </div>
-                                          <div className="form-check form-check-inline">
-                                              <input className="form-check-input" type="radio" name="membershipStatus" id="statusExpired" defaultValue="expired" />
-                                              <label className="form-check-label" htmlFor="statusExpired">Expired</label>
-                                          </div>
-                                      </div>
-                                      <div className="col-md-6 col-xxl-4">
-                                          <label htmlFor="membershipFee" className="form-label">Membership Fee</label>
-                                          <input type="number" className="form-control" id="membershipFee" placeholder="Enter fee amount" />
-                                      </div>
-                                      <div className="col-md-6 col-xxl-4">
-                                          <label htmlFor="paymentMethod" className="form-label">Payment Method</label>
-                                          <div id="paymentMethod"></div>
-                                      </div>
-                                      <div className="col-xxl-4">
-                                          <label htmlFor="renewalReminder" className="form-label">Renewal Reminder</label>
-                                          <input type="text" className="form-control" data-datepicker data-date-format="dd-MM-yyyy" placeholder="Choose renewal date" />
-                                      </div>
-                                      <div className="col-12">
-                                          <label htmlFor="membershipBenefits" className="form-label">Membership Benefits</label>
-                                          <textarea className="form-control" id="membershipBenefits" rows="3" placeholder="List any membership benefits"></textarea>
-                                      </div>
-                                      <div className="col-12">
-                                          <label htmlFor="membershipNotes" className="form-label">Notes</label>
-                                          <textarea className="form-control" id="membershipNotes" rows="3" placeholder="Additional notes about the membership"></textarea>
-                                      </div>
-                                      <div className="col-12 text-end">
-                                          <button type="submit" className="btn btn-outline-light border me-1"><i className="ri-arrow-left-line me-1"></i>Prev</button>
-                                          <button type="submit" className="btn btn-primary">Next <i className="ri-arrow-right-line ms-1"></i></button>
-                                      </div>
-                                  </div>
-                              </div>
-                              <div className="tab-pane fade" id="notes" role="tabpanel" aria-labelledby="notes-tab">
-                                  <h5 className="card-title mb-2 fs-16">Customer Notes & Remarks</h5>
-                                  <p className="text-muted mb-6">Add any additional information, follow-ups, or internal notes about the customer.</p>
-                                  <div className="row g-5">
-                                      <div className="col-12">
-                                          <label htmlFor="customerNotes" className="form-label">Notes / Remarks</label>
-                                          <textarea className="form-control" id="customerNotes" rows="5" placeholder="Additional information or remarks"></textarea>
-                                      </div>
-                                      <div className="col-12">
-                                          <label htmlFor="internalNotes" className="form-label">Internal Notes</label>
-                                          <textarea className="form-control" id="internalNotes" rows="3" placeholder="Private notes visible to staff only"></textarea>
-                                      </div>
-                                      <div className="col-md-6 col-xxl-4">
-                                          <label htmlFor="followUpDate" className="form-label">Follow-up Date</label>
-                                          <input type="text" className="form-control" data-datepicker data-date-format="dd-MM-yyyy" placeholder="Choose date" />
-                                      </div>
-                                      <div className="col-md-6 col-xxl-4">
-                                          <label htmlFor="notePriority" className="form-label">Priority</label>
-                                          <div id="notePriority"></div>
-                                      </div>
-                                      <div className="col-xxl-4">
-                                          <label htmlFor="noteTags" className="form-label">Tags</label>
-                                          <input type="text" className="form-control" id="noteTags" placeholder="Add tags" />
-                                      </div>
-                                      <div className="col-12">
-                                          <label htmlFor="mainProductImage" className="avatar h-52 p-5 text-center border rounded cursor-pointer">
-                                              <div>
-                                                  <i data-lucide="upload-cloud" className="text-muted"></i><br />
-                                                  <p className="mt-3 text-muted"><span className="fw-medium text-body">Drag & Drop</span> Documentes here or click to upload</p>
-                                              </div>
-                                          </label>
-                                          <input type="file" id="mainProductImage" className="d-none" />
-                                      </div>
-                                      <div className="col-12 text-end">
-                                          <button type="submit" className="btn btn-outline-light border">Cancel</button>
-                                          <button type="submit" className="btn btn-primary">Add Customer</button>
-                                      </div>
-                                  </div>
-                              </div>
-                          </div>
-                      </div>
-                  </div>
+      <div className="page-heading d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+        <div>
+          <h6 className="mb-0">Add New Customer</h6>
+          <p className="text-muted mb-0" style={{fontSize:12}}>Register a new customer to the Bems Farms platform</p>
+        </div>
+        <ul className="breadcrumb mb-0">
+          <li className="breadcrumb-item text-muted"><Link to="/customers" style={{color:'inherit',textDecoration:'none'}}>Customers</Link></li>
+          <li className="breadcrumb-item active">Add Customer</li>
+        </ul>
+      </div>
+
+      <form onSubmit={handleSubmit} noValidate>
+        <div className="row g-4">
+          {/* Left column */}
+          <div className="col-lg-8">
+            {/* Personal Info */}
+            <div className="card border-0 shadow-sm mb-4">
+              <div className="card-header bg-white border-bottom d-flex align-items-center gap-2">
+                <i className="ri-user-line" style={{color:'#3b82f6'}}/>
+                <span className="fw-medium" style={{fontSize:14}}>Personal Information</span>
               </div>
-              <div className="col-xl-5 col-xxl-4 order-1 order-xl-2">
-                  <div className="card">
-                      <div className="card-header">
-                          <h5 className="card-title mb-0">Customer Settings</h5>
-                      </div>
-                      <div className="card-body">
-                          <ul className="nav flex-column gap-4 nav-light mb-3" id="customerPillsTab" role="tablist">
-                              <li className="nav-item" role="presentation">
-                                  <button className="nav-link border text-start p-3 w-100 active" id="basic-info-tab" data-bs-toggle="pill" data-bs-target="#basic-info" type="button" role="tab" aria-controls="basic-info" aria-selected="true">
-                                      <span className="d-flex align-items-center gap-3">
-                                          <span className="size-11 bg-body-secondary avatar border text-muted rounded">
-                                              <i className="ri-user-line fs-xl"></i>
-                                          </span>
-                                          <span>
-                                              <span className="d-block">Basic Info</span>
-                                              <span className="text-muted fw-normal">Complete Customer Basic Information</span>
-                                          </span>
-                                      </span>
-                                  </button>
-                              </li>
-                              <li className="nav-item" role="presentation">
-                                  <button className="nav-link border text-start p-3 w-100" id="address-tab" data-bs-toggle="pill" data-bs-target="#address" type="button" role="tab" aria-controls="address" aria-selected="false">
-                                      <span className="d-flex align-items-center gap-3">
-                                          <span className="size-11 bg-body-secondary avatar border text-muted rounded">
-                                              <i className="ri-map-pin-line fs-xl"></i>
-                                          </span>
-                                          <span>
-                                              <span className="d-block">Address</span>
-                                              <span className="text-muted fw-normal">Full Customer Address Details</span>
-                                          </span>
-                                      </span>
-                                  </button>
-                              </li>
-                              <li className="nav-item" role="presentation">
-                                  <button className="nav-link border text-start p-3 w-100" id="membership-tab" data-bs-toggle="pill" data-bs-target="#membership" type="button" role="tab" aria-controls="membership" aria-selected="false">
-                                      <span className="d-flex align-items-center gap-3">
-                                          <span className="size-11 bg-body-secondary avatar border text-muted rounded">
-                                              <i className="ri-coupon-line fs-xl"></i>
-                                          </span>
-                                          <span>
-                                              <span className="d-block">Membership</span>
-                                              <span className="text-muted fw-normal">Detailed Customer Membership Information</span>
-                                          </span>
-                                      </span>
-                                  </button>
-                              </li>
-                              <li className="nav-item" role="presentation">
-                                  <button className="nav-link border text-start p-3 w-100" id="notes-tab" data-bs-toggle="pill" data-bs-target="#notes" type="button" role="tab" aria-controls="notes" aria-selected="false">
-                                      <span className="d-flex align-items-center gap-3">
-                                          <span className="size-11 bg-body-secondary avatar border text-muted rounded">
-                                              <i className="ri-booklet-line fs-xl"></i>
-                                          </span>
-                                          <span>
-                                              <span className="d-block">Notes</span>
-                                              <span className="text-muted fw-normal">Important Customer Notes and Remarks</span>
-                                          </span>
-                                      </span>
-                                  </button>
-                              </li>
-                          </ul>
-                      </div>
+              <div className="card-body">
+                <div className="row g-3">
+                  <div className="col-md-6">
+                    <label className="form-label" style={{fontSize:12}}>First Name <span className="text-danger">*</span></label>
+                    <input className={`form-control form-control-sm ${submitted&&!form.firstName?'is-invalid':''}`}
+                      placeholder="e.g. Adaeze" value={form.firstName} onChange={e=>fld('firstName',e.target.value)}/>
+                    {submitted&&!form.firstName && <div className="invalid-feedback">First name is required.</div>}
                   </div>
+                  <div className="col-md-6">
+                    <label className="form-label" style={{fontSize:12}}>Last Name <span className="text-danger">*</span></label>
+                    <input className={`form-control form-control-sm ${submitted&&!form.lastName?'is-invalid':''}`}
+                      placeholder="e.g. Nwosu" value={form.lastName} onChange={e=>fld('lastName',e.target.value)}/>
+                    {submitted&&!form.lastName && <div className="invalid-feedback">Last name is required.</div>}
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label" style={{fontSize:12}}>Phone Number <span className="text-danger">*</span></label>
+                    <div className="input-group input-group-sm">
+                      <span className="input-group-text">+234</span>
+                      <input className={`form-control ${submitted&&form.phone.length<11?'is-invalid':''}`}
+                        placeholder="08031234567" maxLength={11} value={form.phone} onChange={e=>fld('phone',e.target.value.replace(/\D/g,''))}/>
+                    </div>
+                    {submitted&&form.phone.length<11 && <div className="text-danger" style={{fontSize:11,marginTop:4}}>Enter a valid 11-digit number.</div>}
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label" style={{fontSize:12}}>Alt. Phone <span className="text-muted">(optional)</span></label>
+                    <div className="input-group input-group-sm">
+                      <span className="input-group-text">+234</span>
+                      <input className="form-control" placeholder="07056789012" maxLength={11}
+                        value={form.altPhone} onChange={e=>fld('altPhone',e.target.value.replace(/\D/g,''))}/>
+                    </div>
+                  </div>
+                  <div className="col-12">
+                    <label className="form-label" style={{fontSize:12}}>Email Address <span className="text-muted">(optional)</span></label>
+                    <input className="form-control form-control-sm" type="email"
+                      placeholder="customer@email.com" value={form.email} onChange={e=>fld('email',e.target.value)}/>
+                  </div>
+                </div>
               </div>
+            </div>
+
+            {/* Delivery Address */}
+            <div className="card border-0 shadow-sm mb-4">
+              <div className="card-header bg-white border-bottom d-flex align-items-center gap-2">
+                <i className="ri-map-pin-line" style={{color:'#22c55e'}}/>
+                <span className="fw-medium" style={{fontSize:14}}>Delivery Address</span>
+              </div>
+              <div className="card-body">
+                <div className="row g-3">
+                  <div className="col-md-6">
+                    <label className="form-label" style={{fontSize:12}}>Area / Zone (Lagos)</label>
+                    <select className="form-select form-select-sm" value={form.zone} onChange={e=>fld('zone',e.target.value)}>
+                      {ZONES.map(z=><option key={z}>{z}</option>)}
+                    </select>
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label" style={{fontSize:12}}>Closest Landmark</label>
+                    <input className="form-control form-control-sm" placeholder="e.g. Behind Shoprite"
+                      value={form.landmark} onChange={e=>fld('landmark',e.target.value)}/>
+                  </div>
+                  <div className="col-12">
+                    <label className="form-label" style={{fontSize:12}}>Full Address</label>
+                    <textarea className="form-control form-control-sm" rows={2}
+                      placeholder="No. 12, Admiralty Way, Lekki Phase 1, Lagos"
+                      value={form.address} onChange={e=>fld('address',e.target.value)}/>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Preferences */}
+            <div className="card border-0 shadow-sm">
+              <div className="card-header bg-white border-bottom d-flex align-items-center gap-2">
+                <i className="ri-settings-3-line" style={{color:'#8b5cf6'}}/>
+                <span className="fw-medium" style={{fontSize:14}}>Preferences & Notes</span>
+              </div>
+              <div className="card-body">
+                <div className="row g-3">
+                  <div className="col-12">
+                    <label className="form-label" style={{fontSize:12}}>How did they hear about us?</label>
+                    <select className="form-select form-select-sm" value={form.referral} onChange={e=>fld('referral',e.target.value)}>
+                      <option value="">— Select source —</option>
+                      {REFS.map(r=><option key={r}>{r}</option>)}
+                    </select>
+                  </div>
+                  <div className="col-12">
+                    <label className="form-label" style={{fontSize:12}}>Internal Notes</label>
+                    <textarea className="form-control form-control-sm" rows={3}
+                      placeholder="e.g. Prefers organic produce, allergic to nuts, prefers morning deliveries…"
+                      value={form.notes} onChange={e=>fld('notes',e.target.value)}/>
+                  </div>
+                  <div className="col-12">
+                    <div className="d-flex flex-column gap-2">
+                      <div className="form-check">
+                        <input className="form-check-input" type="checkbox" id="sms" checked={form.smsAlerts}
+                          onChange={e=>fld('smsAlerts',e.target.checked)}/>
+                        <label className="form-check-label" htmlFor="sms" style={{fontSize:13}}>
+                          Send SMS order updates & delivery alerts
+                        </label>
+                      </div>
+                      <div className="form-check">
+                        <input className="form-check-input" type="checkbox" id="mkt" checked={form.marketingConsent}
+                          onChange={e=>fld('marketingConsent',e.target.checked)}/>
+                        <label className="form-check-label" htmlFor="mkt" style={{fontSize:13}}>
+                          Marketing consent — promotions & newsletters
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
+
+          {/* Right column */}
+          <div className="col-lg-4">
+            {/* Account Settings */}
+            <div className="card border-0 shadow-sm mb-4">
+              <div className="card-header bg-white border-bottom d-flex align-items-center gap-2">
+                <i className="ri-shield-user-line" style={{color:'#f59e0b'}}/>
+                <span className="fw-medium" style={{fontSize:14}}>Account Settings</span>
+              </div>
+              <div className="card-body">
+                <div className="mb-3">
+                  <label className="form-label" style={{fontSize:12}}>Account Status</label>
+                  <select className="form-select form-select-sm" value={form.status} onChange={e=>fld('status',e.target.value)}>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="form-label" style={{fontSize:12}}>Initial Loyalty Tier</label>
+                  <div className="d-flex flex-column gap-2 mt-1">
+                    {[
+                      {val:'Bronze',  icon:'ri-star-half-fill',     color:'#c2410c', bg:'#fff7ed', border:'#fed7aa', desc:'Starting tier — 0–999 pts' },
+                      {val:'Silver',  icon:'ri-award-fill',          color:'#64748b', bg:'#f8fafc', border:'#cbd5e1', desc:'1,000–4,999 pts' },
+                      {val:'Gold',    icon:'ri-medal-2-fill',        color:'#d97706', bg:'#fffbeb', border:'#fde68a', desc:'5,000–9,999 pts' },
+                      {val:'Platinum',icon:'ri-vip-crown-2-fill',    color:'#7c3aed', bg:'#f5f3ff', border:'#ddd6fe', desc:'10,000+ pts — VIP' },
+                    ].map(t => (
+                      <div key={t.val} onClick={()=>fld('tier',t.val)}
+                        className="d-flex align-items-center gap-2 p-2 rounded border"
+                        style={{cursor:'pointer',background:form.tier===t.val?t.bg:'',border:`1px solid ${form.tier===t.val?t.color:'#e2e8f0'} !important`,transition:'all 0.15s'}}>
+                        <i className={t.icon} style={{color:t.color,fontSize:16}}/>
+                        <div>
+                          <div style={{fontSize:12,fontWeight:600,color:form.tier===t.val?t.color:'#374151'}}>{t.val}</div>
+                          <div className="text-muted" style={{fontSize:10}}>{t.desc}</div>
+                        </div>
+                        {form.tier===t.val && <i className="ri-check-line ms-auto" style={{color:t.color}}/>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Summary preview */}
+            {(form.firstName || form.phone) && (
+              <div className="card border-0 shadow-sm mb-4" style={{border:'1px solid #e0f2fe !important'}}>
+                <div className="card-header border-bottom" style={{background:'#f0f9ff'}}>
+                  <span className="fw-medium" style={{fontSize:13,color:'#0369a1'}}>Preview</span>
+                </div>
+                <div className="card-body p-3">
+                  <div className="d-flex align-items-center gap-3 mb-2">
+                    <div className="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white"
+                      style={{width:40,height:40,background:'#3b82f6',fontSize:14}}>
+                      {((form.firstName?.[0]||'')+(form.lastName?.[0]||'')).toUpperCase()||'?'}
+                    </div>
+                    <div>
+                      <div className="fw-semibold">{[form.firstName,form.lastName].filter(Boolean).join(' ')||'—'}</div>
+                      <div className="text-muted" style={{fontSize:11}}>{form.phone||'—'}</div>
+                    </div>
+                  </div>
+                  <div className="text-muted" style={{fontSize:11}}>
+                    <i className="ri-map-pin-line me-1"/>{form.zone}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Action buttons */}
+            <div className="d-flex flex-column gap-2">
+              <button type="submit" className="btn btn-primary">
+                <i className="ri-user-add-line me-1"/>Register Customer
+              </button>
+              <Link to="/customers" className="btn btn-outline-secondary">Cancel</Link>
+            </div>
+          </div>
+        </div>
+      </form>
     </div>
   )
 }

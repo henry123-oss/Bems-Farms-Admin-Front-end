@@ -36,9 +36,6 @@ export default function Reviews() {
                               <div id="ratingFilter" className="w-44"></div>
                               <div id="statusFilter" className="w-44"></div>
                               <input type="text" className="form-control w-48" data-datepicker placeholder="Choose date" />
-                              <button className="btn btn-primary flex-shrink-0" data-bs-toggle="modal" data-bs-target="#addReviewModal" id="addReviewBtn">
-                                  <i className="lucide lucide-plus me-1"></i> Add Review
-                              </button>
                           </div>
                       </div>
 
@@ -149,50 +146,7 @@ export default function Reviews() {
           </div>
 
 
-          <div className="modal fade" id="addReviewModal" tabIndex="-1">
-              <div className="modal-dialog modal-dialog-centered">
-                  <div className="modal-content">
-                      <div className="modal-header">
-                          <h6 className="modal-title" id="addReviewModalLabel">Add New Review</h6>
-                          <button type="button" className="btn-close" data-bs-dismiss="modal"></button>
-                      </div>
-                      <div className="modal-body">
-                          <form id="reviewForm">
-                              <input type="hidden" id="reviewId" />
-                              <div className="row g-3">
-                                  <div className="col-12">
-                                      <label className="form-label">Customer Name <span className="text-danger">*</span></label>
-                                      <input type="text" className="form-control" id="customerName" required />
-                                  </div>
-                                  <div className="col-12">
-                                      <label className="form-label">Rating <span className="text-danger">*</span></label>
-                                      <div id="rating"></div>
-                                  </div>
-                                  <div className="col-12">
-                                      <label className="form-label">Review Text <span className="text-danger">*</span></label>
-                                      <textarea className="form-control" id="reviewText" rows="4" required></textarea>
-                                  </div>
-                                  <div className="col-12">
-                                      <label className="form-label">Product Name <span className="text-danger">*</span></label>
-                                      <input type="text" className="form-control" id="productName" required />
-                                  </div>
-                                  <div className="col-12">
-                                      <label className="form-label">Status</label>
-                                      <div id="reviewStatus"></div>
-                                  </div>
-                              </div>
-                              <div className="d-flex gap-2 mt-7">
-                                  <button type="button" className="btn btn-light w-100" data-bs-dismiss="modal">Close</button>
-                                  <button type="button" className="btn btn-primary w-100" id="saveReviewBtn">Add Review</button>
-                              </div>
-                          </form>
-                      </div>
-                  </div>
-              </div>
-          </div>
-
-
-          <div className="modal fade" id="deleteModal" tabIndex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+<div className="modal fade" id="deleteModal" tabIndex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
               <div className="modal-dialog modal-dialog-centered modal-xs">
                   <div className="modal-content p-7 text-center">
                       <div className="d-flex justify-content-center mb-4">

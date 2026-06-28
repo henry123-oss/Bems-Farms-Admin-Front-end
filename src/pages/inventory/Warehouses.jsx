@@ -1,449 +1,261 @@
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
+
+const MOCK_WAREHOUSES = [
+  { id:1, name:'Main Store',  code:'WH-001', type:'General',    manager:'Emeka Adeola',   location:'Bems HQ, Block A',        capacity:500, used:312, products:48, phone:'08012345678', status:'active' },
+  { id:2, name:'Cold Room',   code:'WH-002', type:'Cold Chain', manager:'Ngozi Bello',    location:'Bems HQ, Block B (Rear)', capacity:200, used:133, products:22, phone:'08023456789', status:'active' },
+  { id:3, name:'Dry Store',   code:'WH-003', type:'Dry Goods',  manager:'Tunde Okafor',   location:'Bems HQ, Annex Building', capacity:400, used:180, products:31, phone:'08034567890', status:'active' },
+  { id:4, name:'Farm Store',  code:'WH-004', type:'Farm',       manager:'Chike Nwosu',    location:'Bems Farm Site, Km 12',   capacity:600, used:88,  products:15, phone:'08045678901', status:'active' },
+]
+
+const TYPE_ICON = {
+  'General':   { icon:'ri-store-2-line',    color:'#405189' },
+  'Cold Chain':{ icon:'ri-temp-cold-line',  color:'#299cdb' },
+  'Dry Goods': { icon:'ri-archive-line',    color:'#f7b84b' },
+  'Farm':      { icon:'ri-plant-line',      color:'#0ab39c' },
+}
 
 export default function Warehouses() {
+  const [warehouses, setWarehouses] = useState(MOCK_WAREHOUSES)
+  const [activeModal, setActiveModal] = useState(null)
+  const [editItem, setEditItem]       = useState(null)
+  const [form, setForm] = useState({
+    name:'', code:'', type:'General', manager:'', location:'', capacity:0, used:0, products:0, phone:'', status:'active'
+  })
+
+  const totals = {
+    total:    warehouses.length,
+    active:   warehouses.filter(w => w.status === 'active').length,
+    products: warehouses.reduce((s,w) => s + w.products, 0),
+    capacity: warehouses.reduce((s,w) => s + w.capacity, 0),
+  }
+
+  function openAdd() {
+    setEditItem(null)
+    const nextNum = Math.max(...warehouses.map(w => Number(w.code.split('-')[1]))) + 1
+    setForm({ name:'', code:`WH-${String(nextNum).padStart(3,'0')}`, type:'General', manager:'', location:'', capacity:0, used:0, products:0, phone:'', status:'active' })
+    setActiveModal('form')
+  }
+  function openEdit(w) { setEditItem(w); setForm({ ...w }); setActiveModal('form') }
+  function openDelete(w) { setEditItem(w); setActiveModal('delete') }
+  function closeModal() { setActiveModal(null); setEditItem(null) }
+
+  function saveForm(e) {
+    e.preventDefault()
+    if (editItem) {
+      setWarehouses(prev => prev.map(w => w.id === editItem.id ? { ...w, ...form } : w))
+    } else {
+      setWarehouses(prev => [...prev, { id: Math.max(...prev.map(w=>w.id))+1, ...form }])
+    }
+    closeModal()
+  }
+
+  function confirmDelete() {
+    setWarehouses(prev => prev.filter(w => w.id !== editItem.id))
+    closeModal()
+  }
+
   return (
     <div className="container-fluid">
-      <div className="gap-2 page-heading mb-3 flex-column flex-md-row">
-              <h6 className="flex-grow-1 mb-0">Warehouse</h6>
-              <ul className="breadcrumb flex-shrink-0 mb-0">
-                  <li className="breadcrumb-item"><a href="#">Inventory</a></li>
-                  <li className="breadcrumb-item active">Warehouse</li>
-              </ul>
-          </div>
-          <div className="card shadow-sm">
-              <div className="card-header d-flex flex-wrap gap-4 justify-content-between align-items-center">
-                  <h6 className="mb-0">Warehouse List</h6>
-                  <div className="d-flex flex-wrap align-items-center gap-2">
-                      <div className="position-relative flex-shrink-0">
-                          <input type="text" className="form-control ps-9" placeholder="Search for..." />
-                          <i data-lucide="search" className="size-4 icon-dark position-absolute top-50 start-0 ms-3 translate-middle-y"></i>
-                      </div>
-                      <button type="button" className="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addWarehouseModal"><i className="ri-add-line me-1"></i> Add Warehouse</button>
-                  </div>
+      <div className="gap-2 page-heading mb-3">
+        <h6 className="flex-grow-1 mb-0">Warehouses</h6>
+        <ul className="breadcrumb flex-shrink-0 mb-0">
+          <li className="breadcrumb-item"><a href="#">Inventory</a></li>
+          <li className="breadcrumb-item active">Warehouses</li>
+        </ul>
+      </div>
+
+      {/* Stat cards */}
+      <div className="row g-3 mb-4">
+        {[
+          { label:'Total Warehouses', value: totals.total,    icon:'ri-building-2-line',    color:'#405189' },
+          { label:'Active',           value: totals.active,   icon:'ri-checkbox-circle-line',color:'#0ab39c' },
+          { label:'Total Products',   value: totals.products, icon:'ri-box-3-line',          color:'#299cdb' },
+          { label:'Total Capacity',   value:`${totals.capacity} units`, icon:'ri-stack-line', color:'#f7b84b' },
+        ].map(c => (
+          <div className="col-6 col-xl-3" key={c.label}>
+            <div className="card mb-0" style={{ borderLeft:`3px solid ${c.color}` }}>
+              <div className="card-body d-flex align-items-center gap-3 py-3">
+                <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{ width:44, height:44, background:`${c.color}1a` }}>
+                  <i className={`${c.icon} fs-20`} style={{ color:c.color }}></i>
+                </div>
+                <div>
+                  <div className="fs-20 fw-bold" style={{ color:c.color }}>{c.value}</div>
+                  <div className="text-muted" style={{ fontSize:12 }}>{c.label}</div>
+                </div>
               </div>
-              <div className="card-body pt-0">
-                  <div className="table-card table-responsive">
-                      <table className="table table-borderless text-nowrap mb-0 align-middle">
-                          <thead>
-                              <tr className="bg-light border-bottom">
-                                  <th>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" aria-label="checkbox" id="checAllData" />
-                                          <label className="form-check-label d-none" htmlFor="checAllData">Check All Data</label>
-                                      </div>
-                                  </th>
-                                  <th className="fw-medium text-muted">Code</th>
-                                  <th className="fw-medium text-muted">Name</th>
-                                  <th className="fw-medium text-muted">Location</th>
-                                  <th className="fw-medium text-muted">Manager</th>
-                                  <th className="fw-medium text-muted">Total Items</th>
-                                  <th className="fw-medium text-muted">Capacity</th>
-                                  <th className="fw-medium text-muted">Last Updated</th>
-                                  <th className="fw-medium text-muted">Status</th>
-                                  <th className="fw-medium text-muted">Phone</th>
-                                  <th className="fw-medium text-muted">Email</th>
-                                  <th className="fw-medium text-muted">Actions</th>
-                              </tr>
-                          </thead>
-                          <tbody>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input row-checkbox" type="checkbox" aria-label="checkbox" id="checWH001" />
-                                          <label className="form-check-label d-none" htmlFor="checWH001">WH-001</label>
-                                      </div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary">WH-001</a></td>
-                                  <td>Main Warehouse</td>
-                                  <td>New York</td>
-                                  <td>
-                                      <div className="d-flex gap-2 align-items-center">
-                                          <img src="../assets/user-1-xhBXJtq9.png" alt="User" className="size-8 rounded img-fluid" />
-                                          <a href="#" className="text-reset">John Doe</a>
-                                      </div>
-                                  </td>
-                                  <td>150</td>
-                                  <td>200</td>
-                                  <td>15 Dec, 2025</td>
-                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Active</span></td>
-                                  <td>+1 212-555-1234</td>
-                                  <td><a href="#" className="link link-custom-primary">main@gotpos.com</a></td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon edit-btn"><i className="ri-edit-line"></i></button>
-                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon delete-btn" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input row-checkbox" type="checkbox" aria-label="checkbox" id="checWH002" />
-                                          <label className="form-check-label d-none" htmlFor="checWH002">WH-002</label>
-                                      </div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary">WH-002</a></td>
-                                  <td>Secondary Warehouse</td>
-                                  <td>Los Angeles</td>
-                                  <td>
-                                      <div className="d-flex gap-2 align-items-center">
-                                          <img src="../assets/user-2-CroG7YJ0.png" alt="User" className="size-8 rounded img-fluid" />
-                                          <a href="#" className="text-reset">Jane Smith</a>
-                                      </div>
-                                  </td>
-                                  <td>120</td>
-                                  <td>150</td>
-                                  <td>10 Dec, 2025</td>
-                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Active</span></td>
-                                  <td>+1 310-555-5678</td>
-                                  <td><a href="#" className="link link-custom-primary">secondary@gotpos.com</a></td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon edit-btn"><i className="ri-edit-line"></i></button>
-                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon delete-btn" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input row-checkbox" type="checkbox" aria-label="checkbox" id="checWH003" />
-                                          <label className="form-check-label d-none" htmlFor="checWH003">WH-003</label>
-                                      </div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary">WH-003</a></td>
-                                  <td>East Warehouse</td>
-                                  <td>Chicago</td>
-                                  <td>
-                                      <div className="d-flex gap-2 align-items-center">
-                                          <img src="../assets/user-3-Bz6g7hsE.png" alt="User" className="size-8 rounded img-fluid" />
-                                          <a href="#" className="text-reset">Mike Johnson</a>
-                                      </div>
-                                  </td>
-                                  <td>90</td>
-                                  <td>100</td>
-                                  <td>12 Dec, 2025</td>
-                                  <td><span className="badge bg-warning-subtle text-warning border border-warning-subtle">Inactive</span></td>
-                                  <td>+1 773-555-9876</td>
-                                  <td><a href="#" className="link link-custom-primary">east@gotpos.com</a></td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon edit-btn"><i className="ri-edit-line"></i></button>
-                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon delete-btn" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input row-checkbox" type="checkbox" aria-label="checkbox" id="checWH004" />
-                                          <label className="form-check-label d-none" htmlFor="checWH004">WH-004</label>
-                                      </div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary">WH-004</a></td>
-                                  <td>North Warehouse</td>
-                                  <td>Houston</td>
-                                  <td>
-                                      <div className="d-flex gap-2 align-items-center">
-                                          <img src="../assets/user-4-7l52E1Lo.png" alt="User" className="size-8 rounded img-fluid" />
-                                          <a href="#" className="text-reset">Emily Davis</a>
-                                      </div>
-                                  </td>
-                                  <td>110</td>
-                                  <td>130</td>
-                                  <td>11 Dec, 2025</td>
-                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Active</span></td>
-                                  <td>+1 713-555-4321</td>
-                                  <td><a href="#" className="link link-custom-primary">north@gotpos.com</a></td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon edit-btn"><i className="ri-edit-line"></i></button>
-                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon delete-btn" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input row-checkbox" type="checkbox" aria-label="checkbox" id="checWH005" />
-                                          <label className="form-check-label d-none" htmlFor="checWH005">WH-005</label>
-                                      </div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary">WH-005</a></td>
-                                  <td>South Warehouse</td>
-                                  <td>Phoenix</td>
-                                  <td>
-                                      <div className="d-flex gap-2 align-items-center">
-                                          <img src="../assets/user-5-BsT8d_Co.png" alt="User" className="size-8 rounded img-fluid" />
-                                          <a href="#" className="text-reset">David Wilson</a>
-                                      </div>
-                                  </td>
-                                  <td>130</td>
-                                  <td>160</td>
-                                  <td>09 Dec, 2025</td>
-                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Active</span></td>
-                                  <td>+1 602-555-8765</td>
-                                  <td><a href="#" className="link link-custom-primary">south@gotpos.com</a></td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon edit-btn"><i className="ri-edit-line"></i></button>
-                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon delete-btn" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input row-checkbox" type="checkbox" aria-label="checkbox" id="checWH006" />
-                                          <label className="form-check-label d-none" htmlFor="checWH006">WH-006</label>
-                                      </div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary">WH-006</a></td>
-                                  <td>West Warehouse</td>
-                                  <td>San Francisco</td>
-                                  <td>
-                                      <div className="d-flex gap-2 align-items-center">
-                                          <img src="../assets/user-6-BIO7_TUU.png" alt="User" className="size-8 rounded img-fluid" />
-                                          <a href="#" className="text-reset">Sarah Brown</a>
-                                      </div>
-                                  </td>
-                                  <td>95</td>
-                                  <td>120</td>
-                                  <td>08 Dec, 2025</td>
-                                  <td><span className="badge bg-warning-subtle text-warning border border-warning-subtle">Inactive</span></td>
-                                  <td>+1 415-555-3456</td>
-                                  <td><a href="#" className="link link-custom-primary">west@gotpos.com</a></td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon edit-btn"><i className="ri-edit-line"></i></button>
-                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon delete-btn" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input row-checkbox" type="checkbox" aria-label="checkbox" id="checWH007" />
-                                          <label className="form-check-label d-none" htmlFor="checWH007">WH-007</label>
-                                      </div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary">WH-007</a></td>
-                                  <td>Central Warehouse</td>
-                                  <td>Denver</td>
-                                  <td>
-                                      <div className="d-flex gap-2 align-items-center">
-                                          <img src="../assets/user-7-BMyy-xCq.png" alt="User" className="size-8 rounded img-fluid" />
-                                          <a href="#" className="text-reset">Chris Lee</a>
-                                      </div>
-                                  </td>
-                                  <td>75</td>
-                                  <td>90</td>
-                                  <td>07 Dec, 2025</td>
-                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Active</span></td>
-                                  <td>+1 303-555-9876</td>
-                                  <td><a href="#" className="link link-custom-primary">central@gotpos.com</a></td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon edit-btn"><i className="ri-edit-line"></i></button>
-                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon delete-btn" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input row-checkbox" type="checkbox" aria-label="checkbox" id="checWH008" />
-                                          <label className="form-check-label d-none" htmlFor="checWH008">WH-008</label>
-                                      </div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary">WH-008</a></td>
-                                  <td>North East Warehouse</td>
-                                  <td>Boston</td>
-                                  <td>
-                                      <div className="d-flex gap-2 align-items-center">
-                                          <img src="../assets/user-8-BAGm131G.png" alt="User" className="size-8 rounded img-fluid" />
-                                          <a href="#" className="text-reset">Olivia Taylor</a>
-                                      </div>
-                                  </td>
-                                  <td>90</td>
-                                  <td>110</td>
-                                  <td>06 Dec, 2025</td>
-                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Active</span></td>
-                                  <td>+1 617-555-4321</td>
-                                  <td><a href="#" className="link link-custom-primary">northeast@gotpos.com</a></td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon edit-btn"><i className="ri-edit-line"></i></button>
-                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon delete-btn" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input row-checkbox" type="checkbox" aria-label="checkbox" id="checWH009" />
-                                          <label className="form-check-label d-none" htmlFor="checWH009">WH-009</label>
-                                      </div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary">WH-009</a></td>
-                                  <td>South West Warehouse</td>
-                                  <td>Seattle</td>
-                                  <td>
-                                      <div className="d-flex gap-2 align-items-center">
-                                          <img src="../assets/user-9-DB-6OyMr.png" alt="User" className="size-8 rounded img-fluid" />
-                                          <a href="#" className="text-reset">Daniel Martinez</a>
-                                      </div>
-                                  </td>
-                                  <td>60</td>
-                                  <td>80</td>
-                                  <td>05 Dec, 2025</td>
-                                  <td><span className="badge bg-warning-subtle text-warning border border-warning-subtle">Inactive</span></td>
-                                  <td>+1 206-555-9876</td>
-                                  <td><a href="#" className="link link-custom-primary">southwest@gotpos.com</a></td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon edit-btn"><i className="ri-edit-line"></i></button>
-                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon delete-btn" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input row-checkbox" type="checkbox" aria-label="checkbox" id="checWH010" />
-                                          <label className="form-check-label d-none" htmlFor="checWH010">WH-010</label>
-                                      </div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary">WH-010</a></td>
-                                  <td>Industrial Warehouse</td>
-                                  <td>Detroit</td>
-                                  <td>
-                                      <div className="d-flex gap-2 align-items-center">
-                                          <img src="../assets/user-10-CzpspsdB.png" alt="User" className="size-8 rounded img-fluid" />
-                                          <a href="#" className="text-reset">Emma White</a>
-                                      </div>
-                                  </td>
-                                  <td>130</td>
-                                  <td>160</td>
-                                  <td>04 Dec, 2025</td>
-                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Active</span></td>
-                                  <td>+1 313-555-1234</td>
-                                  <td><a href="#" className="link link-custom-primary">industrial@gotpos.com</a></td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon edit-btn"><i className="ri-edit-line"></i></button>
-                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon delete-btn" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                      </div>
-                                  </td>
-                              </tr>
-                          </tbody>
-                      </table>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Add warehouse button */}
+      <div className="d-flex justify-content-end mb-3">
+        <button className="btn btn-primary d-flex align-items-center gap-1" onClick={openAdd}>
+          <i className="ri-add-line"></i> Add Warehouse
+        </button>
+      </div>
+
+      {/* Warehouse cards */}
+      <div className="row g-4">
+        {warehouses.map(w => {
+          const usePct  = Math.round((w.used / w.capacity) * 100)
+          const ti      = TYPE_ICON[w.type] || TYPE_ICON['General']
+          const barColor = usePct > 85 ? '#f06548' : usePct > 60 ? '#f7b84b' : '#0ab39c'
+          return (
+            <div className="col-md-6 col-xl-3" key={w.id}>
+              <div className="card h-100">
+                <div className="card-body">
+                  {/* Header */}
+                  <div className="d-flex align-items-start justify-content-between mb-3">
+                    <div className="d-flex align-items-center gap-3">
+                      <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                        style={{ width:44, height:44, background:`${ti.color}1a` }}>
+                        <i className={`${ti.icon} fs-20`} style={{ color:ti.color }}></i>
+                      </div>
+                      <div>
+                        <div className="fw-bold" style={{ fontSize:15 }}>{w.name}</div>
+                        <div className="text-muted" style={{ fontSize:11 }}><code>{w.code}</code> · {w.type}</div>
+                      </div>
+                    </div>
+                    <span className={`badge ${w.status === 'active' ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary'}`}>
+                      {w.status === 'active' ? 'Active' : 'Inactive'}
+                    </span>
                   </div>
-                  <div className="row align-items-center g-3 mt-3">
+
+                  {/* Capacity bar */}
+                  <div className="mb-3">
+                    <div className="d-flex justify-content-between mb-1" style={{ fontSize:12 }}>
+                      <span className="text-muted">Capacity Used</span>
+                      <span className="fw-bold" style={{ color: barColor }}>{usePct}%</span>
+                    </div>
+                    <div className="progress" style={{ height:8, borderRadius:4 }}>
+                      <div className="progress-bar" style={{ width:`${usePct}%`, background: barColor, borderRadius:4 }}></div>
+                    </div>
+                    <div className="d-flex justify-content-between mt-1" style={{ fontSize:11, color:'#adb5bd' }}>
+                      <span>{w.used} used</span>
+                      <span>{w.capacity} total</span>
+                    </div>
+                  </div>
+
+                  {/* Info rows */}
+                  <div className="d-flex flex-column gap-1 mb-3" style={{ fontSize:13 }}>
+                    <div className="d-flex gap-2"><i className="ri-user-line text-muted"></i><span>{w.manager}</span></div>
+                    <div className="d-flex gap-2"><i className="ri-map-pin-line text-muted"></i><span style={{ color:'#6c757d' }}>{w.location}</span></div>
+                    <div className="d-flex gap-2"><i className="ri-phone-line text-muted"></i><span>{w.phone}</span></div>
+                  </div>
+
+                  <div className="d-flex align-items-center justify-content-between border-top pt-3">
+                    <div className="text-center">
+                      <div className="fw-bold fs-16">{w.products}</div>
+                      <div className="text-muted" style={{ fontSize:11 }}>Products</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="fw-bold fs-16">{w.capacity - w.used}</div>
+                      <div className="text-muted" style={{ fontSize:11 }}>Free Space</div>
+                    </div>
+                    <div className="d-flex gap-1">
+                      <button className="btn btn-sm btn-soft-primary px-2" onClick={() => openEdit(w)}><i className="ri-pencil-line"></i></button>
+                      <button className="btn btn-sm btn-soft-danger px-2" onClick={() => openDelete(w)}><i className="ri-delete-bin-line"></i></button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Form Modal */}
+      {activeModal === 'form' && (
+        <>
+          <div className="modal fade show d-block" tabIndex="-1" style={{ zIndex:1055 }}>
+            <div className="modal-dialog modal-dialog-centered modal-lg">
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h6 className="modal-title">{editItem ? 'Edit Warehouse' : 'Add New Warehouse'}</h6>
+                  <button className="btn-close" onClick={closeModal}></button>
+                </div>
+                <div className="modal-body">
+                  <form onSubmit={saveForm}>
+                    <div className="row g-3">
                       <div className="col-md-6">
-                          <p className="text-muted text-center text-md-start mb-0">Showing <b className="me-1">1-10</b> of <b className="ms-1">23</b> Results</p>
+                        <label className="form-label fw-medium">Warehouse Name <span className="text-danger">*</span></label>
+                        <input className="form-control" required value={form.name} onChange={e => setForm(f=>({...f,name:e.target.value}))} placeholder="e.g., Cold Room" />
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label fw-medium">Code</label>
+                        <input className="form-control bg-light" readOnly value={form.code} />
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label fw-medium">Type</label>
+                        <select className="form-select" value={form.type} onChange={e => setForm(f=>({...f,type:e.target.value}))}>
+                          {['General','Cold Chain','Dry Goods','Farm'].map(t => <option key={t}>{t}</option>)}
+                        </select>
                       </div>
                       <div className="col-md-6">
-                          <nav aria-label="Page navigation example">
-                              <ul className="pagination justify-content-center justify-content-md-end mb-0 products-pagination">
-                                  <li className="page-item disabled"><a className="page-link" href="#"><i data-lucide="chevron-left" className="size-4"></i>Previous</a></li>
-                                  <li className="page-item active"><a className="page-link" href="#">1</a></li>
-                                  <li className="page-item"><a className="page-link" href="#">2</a></li>
-                                  <li className="page-item"><a className="page-link" href="#">3</a></li>
-                                  <li className="page-item"><a className="page-link" href="#">Next<i data-lucide="chevron-right" className="size-4"></i></a></li>
-                              </ul>
-                          </nav>
+                        <label className="form-label fw-medium">Manager</label>
+                        <input className="form-control" value={form.manager} onChange={e => setForm(f=>({...f,manager:e.target.value}))} placeholder="Manager name" />
                       </div>
-                  </div>
+                      <div className="col-md-6">
+                        <label className="form-label fw-medium">Phone</label>
+                        <input className="form-control" value={form.phone} onChange={e => setForm(f=>({...f,phone:e.target.value}))} placeholder="08xxxxxxxxx" />
+                      </div>
+                      <div className="col-12">
+                        <label className="form-label fw-medium">Location / Address</label>
+                        <input className="form-control" value={form.location} onChange={e => setForm(f=>({...f,location:e.target.value}))} placeholder="e.g., Bems HQ, Block A" />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label fw-medium">Capacity (units)</label>
+                        <input type="number" className="form-control" min="0" value={form.capacity} onChange={e => setForm(f=>({...f,capacity:Number(e.target.value)}))} />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label fw-medium">Current Used</label>
+                        <input type="number" className="form-control" min="0" value={form.used} onChange={e => setForm(f=>({...f,used:Number(e.target.value)}))} />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label fw-medium">Status</label>
+                        <select className="form-select" value={form.status} onChange={e => setForm(f=>({...f,status:e.target.value}))}>
+                          <option value="active">Active</option>
+                          <option value="inactive">Inactive</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="d-flex gap-2 mt-4">
+                      <button type="button" className="btn btn-light w-100" onClick={closeModal}>Cancel</button>
+                      <button type="submit" className="btn btn-primary w-100">{editItem ? 'Save Changes' : 'Add Warehouse'}</button>
+                    </div>
+                  </form>
+                </div>
               </div>
+            </div>
           </div>
+          <div className="modal-backdrop fade show" style={{ zIndex:1054 }} onClick={closeModal}></div>
+        </>
+      )}
 
-
-          <div className="modal fade" id="addWarehouseModal" tabIndex="-1" aria-labelledby="addWarehouseModalLabel" aria-hidden="true">
-              <div className="modal-dialog modal-dialog-centered">
-                  <div className="modal-content">
-                      <div className="modal-header">
-                          <h6 className="modal-title" id="addWarehouseModalLabel">Add New Warehouse</h6>
-                          <button type="button" className="btn-close" data-bs-dismiss="modal"></button>
-                      </div>
-                      <div className="modal-body">
-                          <form id="warehouseForm">
-                              <input type="hidden" id="warehouseId" />
-                              <div className="row g-3">
-                                  <div className="col-12">
-                                      <label htmlFor="warehouseCode" className="form-label">Warehouse Code <span className="text-danger">*</span></label>
-                                      <input type="text" className="form-control" id="warehouseCode" placeholder="WH-011" required />
-                                  </div>
-                                  <div className="col-12">
-                                      <label htmlFor="warehouseName" className="form-label">Warehouse Name <span className="text-danger">*</span></label>
-                                      <input type="text" className="form-control" id="warehouseName" placeholder="Main Warehouse" required />
-                                  </div>
-                                  <div className="col-md-6">
-                                      <label htmlFor="warehouseLocation" className="form-label">Location <span className="text-danger">*</span></label>
-                                      <input type="text" className="form-control" id="warehouseLocation" placeholder="City, State" required />
-                                  </div>
-                                  <div className="col-md-6">
-                                      <label htmlFor="warehouseManager" className="form-label">Manager Name <span className="text-danger">*</span></label>
-                                      <input type="text" className="form-control" id="warehouseManager" placeholder="John Doe" required />
-                                  </div>
-                                  <div className="col-md-6">
-                                      <label htmlFor="totalItems" className="form-label">Total Items</label>
-                                      <input type="number" className="form-control" id="totalItems" placeholder="150" />
-                                  </div>
-                                  <div className="col-md-6">
-                                      <label htmlFor="capacity" className="form-label">Capacity</label>
-                                      <input type="number" className="form-control" id="capacity" placeholder="200" />
-                                  </div>
-                                  <div className="col-md-6">
-                                      <label htmlFor="warehouseStatus" className="form-label">Status</label>
-                                      <div id="warehouseStatus"></div>
-                                  </div>
-                                  <div className="col-md-6">
-                                      <label htmlFor="phone" className="form-label">Phone</label>
-                                      <input type="text" className="form-control" id="phone" placeholder="+1 212-555-1234" />
-                                  </div>
-                                  <div className="col-12">
-                                      <label htmlFor="email" className="form-label">Email</label>
-                                      <input type="email" className="form-control" id="email" placeholder="warehouse@example.com" />
-                                  </div>
-                              </div>
-                              <div className="d-flex gap-2 mt-7">
-                                  <button type="button" className="btn btn-light w-100" data-bs-dismiss="modal">Cancel</button>
-                                  <button type="submit" className="btn btn-primary w-100" id="saveWarehouseBtn">Save Warehouse</button>
-                              </div>
-                          </form>
-                      </div>
+      {activeModal === 'delete' && (
+        <>
+          <div className="modal fade show d-block" tabIndex="-1" style={{ zIndex:1055 }}>
+            <div className="modal-dialog modal-dialog-centered modal-sm">
+              <div className="modal-content p-4 text-center">
+                <div className="d-flex justify-content-center mb-3">
+                  <div className="rounded-circle bg-danger-subtle d-flex align-items-center justify-content-center" style={{ width:56, height:56 }}>
+                    <i className="ri-delete-bin-line text-danger fs-22"></i>
                   </div>
+                </div>
+                <h6 className="mb-1">Delete Warehouse?</h6>
+                <p className="text-muted mb-4" style={{ fontSize:13 }}>{editItem?.name}</p>
+                <div className="d-flex gap-2">
+                  <button className="btn btn-light w-100" onClick={closeModal}>Cancel</button>
+                  <button className="btn btn-danger w-100" onClick={confirmDelete}>Delete</button>
+                </div>
               </div>
+            </div>
           </div>
-
-
-          <div className="modal fade" id="deleteModal" tabIndex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-              <div className="modal-dialog modal-dialog-centered modal-xs">
-                  <div className="modal-content p-7 text-center">
-                      <div className="d-flex justify-content-center mb-4">
-                          <div className="size-14 bg-danger-subtle rounded-circle d-flex align-items-center justify-content-center size-16">
-                              <i className="ri-delete-bin-line text-danger fs-2xl"></i>
-                          </div>
-                      </div>
-                      <h5 className="mb-4 lh-base">Are you sure you want to delete this Warehouse?</h5>
-                      <div className="d-flex justify-content-center align-items-center gap-2">
-                          <button type="button" className="btn btn-danger" data-bs-dismiss="modal">Delete</button>
-                          <button type="button" className="btn btn-link text-reset" data-bs-dismiss="modal">Cancel</button>
-                      </div>
-                  </div>
-              </div>
-          </div>
+          <div className="modal-backdrop fade show" style={{ zIndex:1054 }} onClick={closeModal}></div>
+        </>
+      )}
     </div>
   )
 }

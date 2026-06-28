@@ -122,6 +122,7 @@ function useApexChart(ref, optionsFn, deps = []) {
 // ── Tab components ───────────────────────────────────────────────────────────
 
 function OverviewTab() {
+  const { hasRole } = useAuth()
   const revenueRef = useRef(null)
   const ordersRef  = useRef(null)
 
@@ -175,15 +176,14 @@ function OverviewTab() {
       {/* Pipeline quick-stats */}
       <div className="row g-3 mb-4">
         {[
-          { label: 'Confirmed',        count: 5,  icon: 'ri-time-line',             bg: 'bg-warning-subtle',   txt: 'text-warning',   link: '/orders' },
-          { label: 'Preparing',        count: 3,  icon: 'ri-archive-stack-line',    bg: 'bg-primary-subtle',   txt: 'text-primary',   link: '/orders' },
-          { label: 'Dispatched',       count: 6,  icon: 'ri-truck-line',            bg: 'bg-info-subtle',      txt: 'text-info',      link: '/deliveries/active' },
-          { label: 'Delivered',        count: 12, icon: 'ri-checkbox-circle-line',  bg: 'bg-success-subtle',   txt: 'text-success',   link: '/orders' },
-          { label: 'Returns',          count: 2,  icon: 'ri-arrow-go-back-line',    bg: 'bg-danger-subtle',    txt: 'text-danger',    link: '/orders/refunds' },
-          { label: 'Purchase Orders',  count: 4,  icon: 'ri-shopping-bag-3-line',   bg: 'bg-secondary-subtle', txt: 'text-secondary', link: '/purchase' },
-          { label: 'Suppliers Due',    count: 3,  icon: 'ri-bank-card-line',        bg: 'bg-warning-subtle',   txt: 'text-warning',   link: '/suppliers/payments' },
-          { label: 'AI Conversations', count: 5,  icon: 'ri-robot-line',            bg: 'bg-primary-subtle',   txt: 'text-primary',   link: '/chef-bems/conversations' },
-        ].map(({ label, count, icon, bg, txt, link }) => (
+          { label: 'Confirmed',        count: 5,  icon: 'ri-time-line',             bg: 'bg-warning-subtle',   txt: 'text-warning',   link: '/orders',                      roles: null },
+          { label: 'Preparing',        count: 3,  icon: 'ri-archive-stack-line',    bg: 'bg-primary-subtle',   txt: 'text-primary',   link: '/orders',                      roles: null },
+          { label: 'Dispatched',       count: 6,  icon: 'ri-truck-line',            bg: 'bg-info-subtle',      txt: 'text-info',      link: '/deliveries/active',           roles: ['superadmin','manager','delivery_manager'] },
+          { label: 'Delivered',        count: 12, icon: 'ri-checkbox-circle-line',  bg: 'bg-success-subtle',   txt: 'text-success',   link: '/orders',                      roles: null },
+          { label: 'Returns',          count: 2,  icon: 'ri-arrow-go-back-line',    bg: 'bg-danger-subtle',    txt: 'text-danger',    link: '/orders/refunds',              roles: ['superadmin','manager'] },
+          { label: 'AI Conversations', count: 5,  icon: 'ri-robot-line',            bg: 'bg-primary-subtle',   txt: 'text-primary',   link: '/chef-bems/conversations',     roles: ['superadmin','manager','kitchen_staff'] },
+        ].filter(({ roles }) => !roles || hasRole(...roles))
+        .map(({ label, count, icon, bg, txt, link }) => (
           <div className="col-6 col-sm-3 col-xl" key={label} style={{ minWidth: 0 }}>
             <Link to={link} className="text-decoration-none">
               <div className="card mb-0 h-100">
@@ -239,15 +239,16 @@ function OverviewTab() {
             <div className="card-body">
               <div className="row g-2">
                 {[
-                  { label: 'New Order',    icon: 'ri-add-circle-line',        to: '/orders',              color: 'btn-primary' },
-                  { label: 'New Purchase', icon: 'ri-shopping-bag-3-line',    to: '/purchase/add',        color: 'btn-warning' },
-                  { label: 'Stock In',     icon: 'ri-archive-stack-line',     to: '/inventory/stock-in',  color: 'btn-success' },
-                  { label: 'Add Product',  icon: 'ri-price-tag-3-line',       to: '/products/add',        color: 'btn-info' },
-                  { label: 'Add Customer', icon: 'ri-user-add-line',          to: '/customers/add',       color: 'btn-secondary' },
-                  { label: 'POS Terminal', icon: 'ri-store-2-line',           to: '/pos',                 color: 'btn-dark' },
-                  { label: 'Add Staff',    icon: 'ri-team-line',              to: '/staff/add',           color: 'btn-secondary' },
-                  { label: 'Sales Report', icon: 'ri-bar-chart-grouped-line', to: '/reports/sales',       color: 'btn-outline-primary' },
-                ].map(({ label, icon, to, color }) => (
+                  { label: 'New Order',    icon: 'ri-add-circle-line',        to: '/orders',              color: 'btn-primary',         roles: null },
+                  { label: 'POS Terminal', icon: 'ri-store-2-line',           to: '/pos',                 color: 'btn-dark',            roles: ['superadmin','manager','cashier'] },
+                  { label: 'Stock In',     icon: 'ri-archive-stack-line',     to: '/inventory/stock-in',  color: 'btn-success',         roles: ['superadmin','manager','kitchen_staff'] },
+                  { label: 'Add Product',  icon: 'ri-price-tag-3-line',       to: '/products/add',        color: 'btn-info',            roles: ['superadmin','manager'] },
+                  { label: 'Add Staff',    icon: 'ri-team-line',              to: '/staff/add',           color: 'btn-secondary',       roles: ['superadmin','manager'] },
+                  { label: 'Sales Report', icon: 'ri-bar-chart-grouped-line', to: '/reports/sales',       color: 'btn-outline-primary', roles: ['superadmin','manager','accountant'] },
+                  { label: 'Finance',      icon: 'ri-bank-card-line',         to: '/accounts/overview',   color: 'btn-outline-success', roles: ['superadmin','manager','accountant'] },
+                  { label: 'Deliveries',   icon: 'ri-bike-line',              to: '/deliveries/active',   color: 'btn-outline-info',    roles: ['superadmin','manager','delivery_manager'] },
+                ].filter(({ roles }) => !roles || hasRole(...roles))
+                .map(({ label, icon, to, color }) => (
                   <div className="col-6" key={label}>
                     <Link to={to} className={`btn ${color} btn-sm w-100 d-flex align-items-center gap-2`}>
                       <i className={icon}></i>
@@ -1087,19 +1088,38 @@ function ChefBemsTab() {
 }
 
 // ── Main Dashboard ───────────────────────────────────────────────────────────
-const TABS = [
-  { key: 'overview',   label: 'Overview',      icon: 'ri-dashboard-2-line' },
-  { key: 'sales',      label: 'Sales & Orders', icon: 'ri-shopping-cart-2-line' },
-  { key: 'finance',    label: 'Finance',        icon: 'ri-money-dollar-circle-line' },
-  { key: 'inventory',  label: 'Inventory',      icon: 'ri-archive-stack-line' },
-  { key: 'operations', label: 'Operations',     icon: 'ri-truck-line' },
-  { key: 'customers',  label: 'Customers',      icon: 'ri-group-line' },
-  { key: 'ai',         label: 'Chef Bems AI',   icon: 'ri-robot-line', badge: 'AI' },
+// All dashboard tabs with role restrictions (null = all roles)
+const ALL_TABS = [
+  { key: 'overview',   label: 'Overview',       icon: 'ri-dashboard-2-line',            roles: ['superadmin', 'manager'] },
+  { key: 'sales',      label: 'Sales & Orders', icon: 'ri-shopping-cart-2-line',         roles: null },
+  { key: 'finance',    label: 'Finance',         icon: 'ri-money-dollar-circle-line',    roles: ['superadmin', 'manager', 'accountant'] },
+  { key: 'inventory',  label: 'Inventory',       icon: 'ri-archive-stack-line',          roles: ['superadmin', 'manager', 'kitchen_staff'] },
+  { key: 'operations', label: 'Operations',      icon: 'ri-truck-line',                  roles: ['superadmin', 'manager', 'delivery_manager'] },
+  { key: 'customers',  label: 'Customers',       icon: 'ri-group-line',                  roles: ['superadmin', 'manager', 'cashier'] },
+  { key: 'ai',         label: 'Chef Bems AI',    icon: 'ri-robot-line', badge: 'AI',     roles: ['superadmin', 'manager', 'kitchen_staff'] },
 ]
 
+// Default landing tab per role
+const DEFAULT_TAB = {
+  superadmin:       'overview',
+  manager:          'overview',
+  accountant:       'finance',
+  delivery_manager: 'operations',
+  cashier:          'sales',
+  kitchen_staff:    'sales',
+}
+
 export default function Dashboard() {
-  const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState('overview')
+  const { user, hasRole } = useAuth()
+
+  // Filter tabs to only those the current user can see
+  const TABS = ALL_TABS.filter(t => !t.roles || (user && t.roles.includes(user.role)))
+  const defaultTab = (user && DEFAULT_TAB[user.role]) ?? 'sales'
+  // Ensure the default tab is actually visible for this role
+  const firstTab = TABS[0]?.key ?? 'sales'
+  const [activeTab, setActiveTab] = useState(
+    TABS.find(t => t.key === defaultTab) ? defaultTab : firstTab
+  )
 
   const today = new Date().toLocaleDateString('en-NG', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',

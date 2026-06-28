@@ -1,377 +1,419 @@
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
+
+const fmt  = n => `₦${Number(n).toLocaleString()}`
+const fmtD = s => new Date(s).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
+
+const CATEGORIES  = ['Sales', 'Wallet Top-up', 'Delivery Fee', 'Corporate Supply', 'POS Sale', 'Refund Recovery', 'Other']
+const PAY_METHODS = ['Paystack', 'Bank Transfer', 'Cash', 'POS Terminal', 'Wallet', 'USSD']
+const INCOME_TYPES = ['Online Order', 'Walk-in Sale', 'Corporate', 'Wallet Credit', 'Delivery', 'Manual Entry']
+
+const INITIAL_INCOME = [
+  { id:'INC-0041', date:'2026-06-27', ref:'ORD-2026-0141', customer:'Adaeze Nwosu',      category:'Sales',           method:'Paystack',      status:'paid',    amount:18_400, type:'Online Order',   note:'' },
+  { id:'INC-0040', date:'2026-06-27', ref:'ORD-2026-0140', customer:'Kemi Balogun',       category:'Sales',           method:'Paystack',      status:'paid',    amount:16_100, type:'Online Order',   note:'' },
+  { id:'INC-0039', date:'2026-06-26', ref:'WLT-0234',       customer:'Seun Adesanya',      category:'Wallet Top-up',   method:'Paystack',      status:'paid',    amount:20_000, type:'Wallet Credit',  note:'Wallet top-up via app' },
+  { id:'INC-0038', date:'2026-06-26', ref:'ORD-2026-0138', customer:'Tobi Adekunle',       category:'Sales',           method:'POS Terminal',  status:'paid',    amount:12_400, type:'Walk-in Sale',   note:'' },
+  { id:'INC-0037', date:'2026-06-25', ref:'DEL-0882',       customer:'Akin Okafor',        category:'Delivery Fee',    method:'Paystack',      status:'paid',    amount:3_500,  type:'Delivery',       note:'Express delivery — Lekki' },
+  { id:'INC-0036', date:'2026-06-25', ref:'CORP-0019',      customer:'EatWell Catering Ltd',category:'Corporate Supply',method:'Bank Transfer',  status:'paid',    amount:185_000,type:'Corporate',      note:'June standing order — vegetables & fruits' },
+  { id:'INC-0035', date:'2026-06-24', ref:'ORD-2026-0135', customer:'Ngozi Okonkwo',       category:'Sales',           method:'Paystack',      status:'pending', amount:9_200,  type:'Online Order',   note:'' },
+  { id:'INC-0034', date:'2026-06-24', ref:'WLT-0228',       customer:'Bola Akinwale',      category:'Wallet Top-up',   method:'Paystack',      status:'paid',    amount:10_000, type:'Wallet Credit',  note:'' },
+  { id:'INC-0033', date:'2026-06-23', ref:'ORD-2026-0133', customer:'Chukwuemeka Eze',     category:'Sales',           method:'Paystack',      status:'paid',    amount:22_700, type:'Online Order',   note:'' },
+  { id:'INC-0032', date:'2026-06-23', ref:'DEL-0877',       customer:'Fatima Al-Hassan',   category:'Delivery Fee',    method:'Paystack',      status:'paid',    amount:2_800,  type:'Delivery',       note:'' },
+  { id:'INC-0031', date:'2026-06-22', ref:'ORD-2026-0131', customer:'Taiwo Adeleke',       category:'Sales',           method:'Cash',          status:'paid',    amount:7_500,  type:'Walk-in Sale',   note:'' },
+  { id:'INC-0030', date:'2026-06-22', ref:'CORP-0018',      customer:'Mama Cass Restaurants',category:'Corporate Supply',method:'Bank Transfer', status:'pending',amount:240_000,type:'Corporate',      note:'Weekly supply — tomatoes, pepper, leafy veg' },
+  { id:'INC-0029', date:'2026-06-21', ref:'ORD-2026-0129', customer:'Yemi Osinbajo Jr',    category:'Sales',           method:'Paystack',      status:'paid',    amount:15_600, type:'Online Order',   note:'' },
+  { id:'INC-0028', date:'2026-06-20', ref:'RFC-0045',       customer:'Emeka Okafor',       category:'Refund Recovery', method:'Bank Transfer',  status:'paid',    amount:8_400,  type:'Manual Entry',   note:'Supplier refund — spoilt tomatoes batch' },
+]
+
+const BLANK_FORM = {
+  date: new Date().toISOString().split('T')[0],
+  ref: '', customer: '', category: 'Sales', method: 'Paystack',
+  status: 'paid', amount: '', type: 'Online Order', note: '',
+}
+
+const STATUS_CFG = {
+  paid:    { label:'Paid',    cls:'bg-success-subtle text-success border-success-subtle' },
+  pending: { label:'Pending', cls:'bg-warning-subtle text-warning border-warning-subtle' },
+  failed:  { label:'Failed',  cls:'bg-danger-subtle text-danger border-danger-subtle' },
+}
 
 export default function Income() {
+  const [records, setRecords]   = useState(INITIAL_INCOME)
+  const [search, setSearch]     = useState('')
+  const [filterCat, setFiltCat] = useState('all')
+  const [filterSt,  setFiltSt]  = useState('all')
+  const [activeModal, setModal] = useState(null)
+  const [selected, setSelected] = useState(null)
+  const [form, setForm]         = useState(BLANK_FORM)
+
+  const closeModal = () => { setModal(null); setSelected(null); setForm(BLANK_FORM) }
+
+  const openView   = r => { setSelected(r); setModal('view') }
+  const openEdit   = r => { setSelected(r); setForm({ ...r }); setModal('edit') }
+  const openDelete = r => { setSelected(r); setModal('delete') }
+  const openAdd    = () => { setForm({ ...BLANK_FORM, ref: `INC-${String(records.length + 42).padStart(4,'0')}` }); setModal('add') }
+
+  const saveRecord = () => {
+    if (!form.customer || !form.amount) return
+    if (activeModal === 'add') {
+      const newR = { ...form, id: `INC-${String(records.length + 42).padStart(4,'0')}`, amount: Number(form.amount) }
+      setRecords(prev => [newR, ...prev])
+    } else {
+      setRecords(prev => prev.map(r => r.id === selected.id ? { ...r, ...form, amount: Number(form.amount) } : r))
+    }
+    closeModal()
+  }
+
+  const deleteRecord = () => {
+    setRecords(prev => prev.filter(r => r.id !== selected.id))
+    closeModal()
+  }
+
+  const filtered = records.filter(r => {
+    const q = search.toLowerCase()
+    const ms = !q || r.customer.toLowerCase().includes(q) || r.ref.toLowerCase().includes(q) || r.id.toLowerCase().includes(q)
+    const mc = filterCat === 'all' || r.category === filterCat
+    const mst = filterSt === 'all' || r.status === filterSt
+    return ms && mc && mst
+  })
+
+  // Stats
+  const totalIncome = records.filter(r => r.status === 'paid').reduce((s, r) => s + r.amount, 0)
+  const pending     = records.filter(r => r.status === 'pending').reduce((s, r) => s + r.amount, 0)
+  const todayStr    = new Date().toISOString().split('T')[0]
+  const todayInc    = records.filter(r => r.date === todayStr && r.status === 'paid').reduce((s, r) => s + r.amount, 0)
+  const totalRecords= records.length
+  const avgPerTxn   = totalRecords ? Math.round(totalIncome / records.filter(r=>r.status==='paid').length) : 0
+
+  // Category breakdown
+  const catTotals = CATEGORIES.reduce((acc, cat) => {
+    acc[cat] = records.filter(r => r.category === cat && r.status === 'paid').reduce((s, r) => s + r.amount, 0)
+    return acc
+  }, {})
+
+  const CAT_COLORS = {
+    'Sales':'#3b82f6','Wallet Top-up':'#8b5cf6','Delivery Fee':'#f59e0b',
+    'Corporate Supply':'#22c55e','POS Sale':'#0ea5e9','Refund Recovery':'#ec4899','Other':'#94a3b8',
+  }
+
   return (
     <div className="container-fluid">
-      <div className="gap-2 page-heading mb-3 flex-column flex-md-row">
-              <h6 className="flex-grow-1 mb-0">Income</h6>
-              <ul className="breadcrumb flex-shrink-0 mb-0">
-                  <li className="breadcrumb-item"><a href="#">Accounts</a></li>
-                  <li className="breadcrumb-item active">Income</li>
-              </ul>
-          </div>
-          <div className="card">
-              <div className="row row-cols-1 row-cols-md-5 g-0">
-                  <div className="col border-end">
-                      <div className="d-flex flex-md-column flex-xl-row align-items-center align-items-md-start align-items-xl-center gap-2 p-4 bg-light bg-opacity-75">
-                          <span className="d-block size-2 bg-primary rounded-circle"></span>
-                          <h6 className="mb-0 fs-16 fw-medium text-truncate overflow-hidden">Total Income</h6>
-                      </div>
-                      <div className="p-4 mt-5 overflow-hidden text-truncate">
-                          <h4 className="mb-2 font-base">$128,450</h4>
-                          <span className="text-muted d-flex flex-md-column flex-xl-row">
-                              <span className="text-success fw-medium me-2"><i data-lucide="trending-up" className="size-4 me-1"></i>12.4%</span>All-time earnings
-                          </span>
-                      </div>
+      <div className="page-heading d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+        <h6 className="mb-0">Income</h6>
+        <ul className="breadcrumb mb-0">
+          <li className="breadcrumb-item text-muted">Accounts</li>
+          <li className="breadcrumb-item active">Income</li>
+        </ul>
+      </div>
+
+      {/* Stats */}
+      <div className="row g-3 mb-4">
+        {[
+          { label:'Total Income (Paid)', val:fmt(totalIncome), icon:'ri-arrow-up-circle-line',  color:'#22c55e', bg:'#f0fdf4' },
+          { label:"Today's Income",      val:fmt(todayInc),    icon:'ri-calendar-check-line',    color:'#3b82f6', bg:'#eff6ff' },
+          { label:'Pending Income',      val:fmt(pending),     icon:'ri-time-line',               color:'#f59e0b', bg:'#fffbeb' },
+          { label:'Total Records',       val:totalRecords,     icon:'ri-file-list-3-line',        color:'#8b5cf6', bg:'#f5f3ff' },
+          { label:'Avg per Transaction', val:fmt(avgPerTxn),  icon:'ri-bar-chart-line',          color:'#0ea5e9', bg:'#f0f9ff' },
+        ].map((s, i) => (
+          <div key={i} className="col-6 col-md-4 col-xl">
+            <div className="card border-0 shadow-sm h-100">
+              <div className="card-body p-3">
+                <div className="d-flex align-items-center gap-3">
+                  <div className="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
+                    style={{ width:44, height:44, background:s.bg }}>
+                    <i className={`${s.icon} fs-20`} style={{ color:s.color }}/>
                   </div>
-                  <div className="col border-end">
-                      <div className="d-flex flex-md-column flex-xl-row align-items-center align-items-md-start align-items-xl-center gap-2 p-4 bg-light bg-opacity-75">
-                          <span className="d-block size-2 bg-success rounded-circle"></span>
-                          <h6 className="mb-0 fs-16 fw-medium text-truncate overflow-hidden">Today’s Income</h6>
-                      </div>
-                      <div className="p-4 mt-5 overflow-hidden text-truncate">
-                          <h4 className="mb-2 font-base">$3,250</h4>
-                          <span className="text-muted d-flex flex-md-column flex-xl-row">
-                              <span className="text-success fw-medium me-2"><i data-lucide="trending-up" className="size-4 me-1"></i>5.1%</span>Last 24 hours
-                          </span>
-                      </div>
+                  <div>
+                    <div className="text-muted" style={{ fontSize:11 }}>{s.label}</div>
+                    <div className="fw-bold fs-15">{s.val}</div>
                   </div>
-                  <div className="col border-end">
-                      <div className="d-flex flex-md-column flex-xl-row align-items-center align-items-md-start align-items-xl-center gap-2 p-4 bg-light bg-opacity-75">
-                          <span className="d-block size-2 bg-warning rounded-circle"></span>
-                          <h6 className="mb-0 fs-16 fw-medium text-truncate overflow-hidden">Pending Income</h6>
-                      </div>
-                      <div className="p-4 mt-5 overflow-hidden text-truncate">
-                          <h4 className="mb-2 font-base">$8,740</h4>
-                          <span className="text-muted d-flex flex-md-column flex-xl-row">
-                              <span className="text-danger fw-medium me-2"><i data-lucide="trending-down" className="size-4 me-1"></i>−2.3%</span>Awaiting payment
-                          </span>
-                      </div>
-                  </div>
-                  <div className="col border-end">
-                      <div className="d-flex flex-md-column flex-xl-row align-items-center align-items-md-start align-items-xl-center gap-2 p-4 bg-light bg-opacity-75">
-                          <span className="d-block size-2 bg-info rounded-circle"></span>
-                          <h6 className="mb-0 fs-16 fw-medium text-truncate overflow-hidden">Total Invoices</h6>
-                      </div>
-                      <div className="p-4 mt-5 overflow-hidden text-truncate">
-                          <h4 className="mb-2 font-base">1,284</h4>
-                          <span className="text-muted d-flex flex-md-column flex-xl-row">
-                              <span className="text-success fw-medium me-2"><i data-lucide="trending-up" className="size-4 me-1"></i>8.7%</span>Income records
-                          </span>
-                      </div>
-                  </div>
-                  <div className="col">
-                      <div className="d-flex flex-md-column flex-xl-row align-items-center align-items-md-start align-items-xl-center gap-2 p-4 bg-light bg-opacity-75">
-                          <span className="d-block size-2 bg-secondary rounded-circle"></span>
-                          <h6 className="mb-0 fs-16 fw-medium text-truncate overflow-hidden">Avg / Invoice</h6>
-                      </div>
-                      <div className="p-4 mt-5 overflow-hidden text-truncate">
-                          <h4 className="mb-2 font-base">$100.20</h4>
-                          <span className="text-muted d-flex flex-md-column flex-xl-row">
-                              <span className="text-success fw-medium me-2"><i data-lucide="trending-up" className="size-4 me-1"></i>3.4%</span>Revenue quality
-                          </span>
-                      </div>
-                  </div>
+                </div>
               </div>
+            </div>
           </div>
-          <div className="card">
-              <div className="card-header">
-                  <div className="d-flex flex-wrap gap-4 align-items-center gap-2 justify-content-between mb-5">
-                      <h5 className="card-title mb-1">Income</h5>
-                      <div className="d-flex flex-wrap gap-2 align-items-center gap-2"> 
-                          <a href="#" className="avatar size-10 bg-warning-subtle rounded p-2">
-                              <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAB2AAAAdgB+lymcgAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAANESURBVHic7ZtLaBNRFIa/O5nWakJpfaXWBwU1LkQQxI2gIIqvigtBN4JrwZUbQbAbF+5UBBHdiO5UFF8gIihoRVERtVqQLkRqrH3Z2odNjZ05LtxqZnLndm5a54Nswnn88+fezJnJRBESeXMmh5s6gi9bUCwAVNjcknQ+/Pv7jiv0vx8jnT2rdj84bKTXXwh1ENJ2bgfKvwqkjSv4lwEAn+5DcQTmr+5Q+16vMN4bcIICpP38EpR/hck4+FAI9L7OycVcr8ielOnqgQbgeYeAjOnGZTPYMY9Lb/vk6p5qk2WDDVBsNNkwEoMd9Yy+HJC722tNlQw2QJhnqpkRhj6l+fKuV27typooF2YFmPm2N8lofgbdz/NybefyqKWCDahUxnpc+p99kBvNa6KUmboGABS+OXQ/fSE3m9fplpjaBgCMDzp0tT6RW5ubddKnvgEAP4cV+Wd35ObW/eWmTg8DAIo/FJ8fXZJrmw+VkzZ9DACYGIeuxyfl+qZjYVMq2wCnqvwcrwj51pawJlS2AZkFenl+EbqetsjtbWuDQl29DjFRnwPfg5FO8H6Vl+t7MNp3GVhaKqyyDVAOzF3556WDm8nCq5Ihlb0FoiLFmqCQ6W1ACBIDbAuwTWKAbQG2SQywLcA22oOQ73v0fGyjMNyPiGgL+D78UzsXFDXVDisaq3FTep+l9goY+dbF2FBfpIOPjjBe9Pg6OKFdQduAlGv09nwkqlz9nay9BTL185lYlKMwPBBpFRQKPdq5AJmZDg11+pc0ES6GFHXZJuqyTfolgMaaEr8NxsB/fxZIDLAtwDaJAbYF2CaZBHVbJ5NgMgkmk2AyCU4HEgNsC7BNYoBtAbaJdRJ03CrmLFxG7dzFum2NE+sk6E/8or/zA+J7um2NE/sk6KRccCpn58U6CTquS322qaIePrU+CdqmctaiJRIDbAuwTWKAbQG2SQywLcA2iQGBEYLN276TTpg/TfXFoGNycNxiYEhgEVF271pGwZ3VHhQSYgX4p4ARE3pixUkJVekDgWFBAWrVwc84shf4YURYHKiUkG44qtafKP2oOCHPAmrlwXs4shrkAqg84EcWaRoFpGZ41MzuINO4UW04fTxM2m9+4hqehcgNDwAAAABJRU5ErkJggg==" alt="Image" className="img-fluid" />
-                          </a>
-                          <a href="#" className="avatar size-10 bg-success-subtle rounded p-2">
-                              <img src="data:image/png;base64,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" alt="Image" className="img-fluid" />
-                          </a>
-                          <a href="#" className="avatar size-10 bg-danger-subtle rounded p-2">
-                              <img src="data:image/png;base64,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" alt="Image" className="img-fluid" />
-                          </a>
-                          <button type="button" className="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addIncomeModal"><i data-lucide="plus" className="size-4 me-1"></i>Add Income</button>
-                      </div>
-                  </div>
-                  <div className="d-flex flex-wrap gap-4 align-items-center gap-2 justify-content-between">
-                      <div className="d-flex flex-wrap gap-2">
-                          <div className="position-relative flex-shrink-0 w-48">
-                              <input type="text" id="filterDate" className="form-control ps-10" data-datepicker data-date-format="dd-MM-yyyy" placeholder="Choose date" />
-                              <i data-lucide="calendar" className="size-4 icon-dark position-absolute top-50 start-0 ms-4 translate-middle-y"></i>
-                          </div>
-                          <div id="incomeCategory" className="w-44"></div>
-                          <div id="incomePaymentMethod" className="w-36"></div>
-                          <div id="incomeType" className="w-36"></div>
-                          <button type="button" className="btn btn-primary">Apply</button>
-                          <button type="button" className="btn btn-light btn-icon"><i className="ri-loop-left-line"></i></button>
-                      </div>
-                      <div className="position-relative">
-                          <input type="text" id="tableSearch" className="form-control ps-10" placeholder="Search payments..." />
-                          <i data-lucide="search" className="size-4 icon-dark position-absolute top-50 start-0 ms-4 translate-middle-y"></i>
-                      </div>
-                  </div>
+        ))}
+      </div>
+
+      {/* Category breakdown */}
+      <div className="card border-0 shadow-sm mb-4">
+        <div className="card-body p-3">
+          <div className="fw-medium mb-3" style={{ fontSize:13 }}>Income by Category</div>
+          <div className="d-flex flex-wrap gap-3">
+            {Object.entries(catTotals).filter(([,v]) => v > 0).map(([cat, val]) => (
+              <div key={cat} className="d-flex align-items-center gap-2 border rounded px-3 py-2">
+                <div style={{ width:10, height:10, borderRadius:'50%', background: CAT_COLORS[cat] || '#94a3b8' }}/>
+                <span style={{ fontSize:12 }} className="text-muted">{cat}:</span>
+                <span className="fw-medium" style={{ fontSize:12 }}>{fmt(val)}</span>
               </div>
-              <div className="card-body pt-0">
-                  <div className="table-card table-responsive">
-                      <table className="table table-hover text-nowrap align-middle mb-0">
-                          <thead>
-                              <tr className="bg-light border-bottom">
-                                  <th>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" id="checkAllIncome" />
-                                      </div>
-                                  </th>
-                                  <th className="fw-medium text-muted">Date</th>
-                                  <th className="fw-medium text-muted">Invoice</th>
-                                  <th className="fw-medium text-muted">Customer</th>
-                                  <th className="fw-medium text-muted">Category</th>
-                                  <th className="fw-medium text-muted">Payment Method</th>
-                                  <th className="fw-medium text-muted">Status</th>
-                                  <th className="fw-medium text-muted">Amount</th>
-                                  <th className="fw-medium text-muted">Income Type</th>
-                                  <th className="fw-medium text-muted">Action</th>
-                              </tr>
-                          </thead>
-                          <tbody>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" />
-                                      </div>
-                                  </td>
-                                  <td>24 Dec, 2025</td>
-                                  <td><a href="#" className="link link-custom-primary">INV-0012</a></td>
-                                  <td>John Dave</td>
-                                  <td>Electronic</td>
-                                  <td><span className="fs-13 rounded fw-medium py-1 px-2 border text-reset">Cash</span></td>
-                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Paid</span></td>
-                                  <td>$100</td>
-                                  <td>Sale</td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-edit-line"></i></button>
-                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" />
-                                      </div>
-                                  </td>
-                                  <td>24 Dec, 2025</td>
-                                  <td><a href="#" className="link link-custom-primary">INV-0013</a></td>
-                                  <td>Mary Parker</td>
-                                  <td>Clothing</td>
-                                  <td><span className="fs-13 rounded fw-medium py-1 px-2 border text-reset">Card</span></td>
-                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Paid</span></td>
-                                  <td>$200</td>
-                                  <td>Service</td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-edit-line"></i></button>
-                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" />
-                                      </div>
-                                  </td>
-                                  <td>23 Dec, 2025</td>
-                                  <td><a href="#" className="link link-custom-primary">INV-0014</a></td>
-                                  <td>David Lee</td>
-                                  <td>Groceries</td>
-                                  <td><span className="fs-13 rounded fw-medium py-1 px-2 border text-reset">Online</span></td>
-                                  <td><span className="badge bg-warning-subtle text-warning border border-warning-subtle">Pending</span></td>
-                                  <td>$150</td>
-                                  <td>Sale</td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-edit-line"></i></button>
-                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" />
-                                      </div>
-                                  </td>
-                                  <td>22 Dec, 2025</td>
-                                  <td><a href="#" className="link link-custom-primary">INV-0015</a></td>
-                                  <td>Linda Brown</td>
-                                  <td>Furniture</td>
-                                  <td><span className="fs-13 rounded fw-medium py-1 px-2 border text-reset">Card</span></td>
-                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Paid</span></td>
-                                  <td>$300</td>
-                                  <td>Sale</td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-edit-line"></i></button>
-                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" />
-                                      </div>
-                                  </td>
-                                  <td>21 Dec, 2025</td>
-                                  <td><a href="#" className="link link-custom-primary">INV-0016</a></td>
-                                  <td>Michael Scott</td>
-                                  <td>Stationery</td>
-                                  <td><span className="fs-13 rounded fw-medium py-1 px-2 border text-reset">Cash</span></td>
-                                  <td><span className="badge bg-danger-subtle text-danger border border-danger-subtle">Failed</span></td>
-                                  <td>$50</td>
-                                  <td>Service</td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-edit-line"></i></button>
-                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" />
-                                      </div>
-                                  </td>
-                                  <td>20 Dec, 2025</td>
-                                  <td><a href="#" className="link link-custom-primary">INV-0017</a></td>
-                                  <td>Emma Watson</td>
-                                  <td>Books</td>
-                                  <td><span className="fs-13 rounded fw-medium py-1 px-2 border text-reset">Online</span></td>
-                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Paid</span></td>
-                                  <td>$120</td>
-                                  <td>Sale</td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-edit-line"></i></button>
-                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" />
-                                      </div>
-                                  </td>
-                                  <td>19 Dec, 2025</td>
-                                  <td><a href="#" className="link link-custom-primary">INV-0018</a></td>
-                                  <td>Oliver Twist</td>
-                                  <td>Clothing</td>
-                                  <td><span className="fs-13 rounded fw-medium py-1 px-2 border text-reset">Card</span></td>
-                                  <td><span className="badge bg-warning-subtle text-warning border border-warning-subtle">Pending</span></td>
-                                  <td>$250</td>
-                                  <td>Service</td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-edit-line"></i></button>
-                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" />
-                                      </div>
-                                  </td>
-                                  <td>18 Dec, 2025</td>
-                                  <td><a href="#" className="link link-custom-primary">INV-0019</a></td>
-                                  <td>Sophia Loren</td>
-                                  <td>Electronics</td>
-                                  <td><span className="fs-13 rounded fw-medium py-1 px-2 border text-reset">Cash</span></td>
-                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Paid</span></td>
-                                  <td>$400</td>
-                                  <td>Sale</td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-edit-line"></i></button>
-                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" />
-                                      </div>
-                                  </td>
-                                  <td>17 Dec, 2025</td>
-                                  <td><a href="#" className="link link-custom-primary">INV-0020</a></td>
-                                  <td>James Bond</td>
-                                  <td>Stationery</td>
-                                  <td><span className="fs-13 rounded fw-medium py-1 px-2 border text-reset">Online</span></td>
-                                  <td><span className="badge bg-danger-subtle text-danger border border-danger-subtle">Failed</span></td>
-                                  <td>$75</td>
-                                  <td>Service</td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-edit-line"></i></button>
-                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" />
-                                      </div>
-                                  </td>
-                                  <td>16 Dec, 2025</td>
-                                  <td><a href="#" className="link link-custom-primary">INV-0021</a></td>
-                                  <td>Olivia Benson</td>
-                                  <td>Cosmetics</td>
-                                  <td><span className="fs-13 rounded fw-medium py-1 px-2 border text-reset">Card</span></td>
-                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Paid</span></td>
-                                  <td>$180</td>
-                                  <td>Sale</td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button type="button" className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                          <button type="button" className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-edit-line"></i></button>
-                                          <button type="button" className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                      </div>
-                                  </td>
-                              </tr>
-                          </tbody>
-                      </table>
-                  </div>
-                  <div className="row align-items-center g-3 mt-3">
-                      <div className="col-md-6">
-                          <p className="text-muted text-center text-md-start mb-0">Showing <b className="me-1">1-10</b> of <b className="ms-1">23</b> Results</p>
-                      </div>
-                      <div className="col-md-6">
-                          <nav aria-label="Page navigation example">
-                              <ul className="pagination justify-content-center justify-content-md-end mb-0 products-pagination">
-                                  <li className="page-item disabled"><a className="page-link" href="#"><i data-lucide="chevron-left" className="size-4"></i>Previous</a></li>
-                                  <li className="page-item active"><a className="page-link" href="#">1</a></li>
-                                  <li className="page-item"><a className="page-link" href="#">2</a></li>
-                                  <li className="page-item"><a className="page-link" href="#">3</a></li>
-                                  <li className="page-item"><a className="page-link" href="#">Next<i data-lucide="chevron-right" className="size-4"></i></a></li>
-                              </ul>
-                          </nav>
-                      </div>
-                  </div>
-              </div>
+            ))}
           </div>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="card border-0 shadow-sm">
+        <div className="card-header bg-white border-bottom">
+          <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div className="d-flex flex-wrap align-items-center gap-2">
+              <div className="position-relative">
+                <input className="form-control ps-9" style={{ width:220 }}
+                  placeholder="Search customer, ref, ID…"
+                  value={search} onChange={e => setSearch(e.target.value)}/>
+                <i className="ri-search-line position-absolute top-50 translate-middle-y ms-3" style={{ fontSize:14, color:'#94a3b8' }}/>
+              </div>
+              <select className="form-select" style={{ width:150 }} value={filterCat} onChange={e => setFiltCat(e.target.value)}>
+                <option value="all">All Categories</option>
+                {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+              </select>
+              <select className="form-select" style={{ width:130 }} value={filterSt} onChange={e => setFiltSt(e.target.value)}>
+                <option value="all">All Status</option>
+                <option value="paid">Paid</option>
+                <option value="pending">Pending</option>
+                <option value="failed">Failed</option>
+              </select>
+            </div>
+            <button className="btn btn-primary" onClick={openAdd}>
+              <i className="ri-add-line me-1"/>Add Income
+            </button>
+          </div>
+        </div>
+
+        <div className="card-body p-0">
+          <div className="table-responsive">
+            <table className="table align-middle mb-0" style={{ minWidth:900 }}>
+              <thead className="bg-light">
+                <tr>
+                  <th className="fw-medium text-muted ps-4" style={{ fontSize:12 }}>Date / Ref</th>
+                  <th className="fw-medium text-muted" style={{ fontSize:12 }}>Customer</th>
+                  <th className="fw-medium text-muted" style={{ fontSize:12 }}>Category</th>
+                  <th className="fw-medium text-muted" style={{ fontSize:12 }}>Method</th>
+                  <th className="fw-medium text-muted" style={{ fontSize:12 }}>Type</th>
+                  <th className="fw-medium text-muted" style={{ fontSize:12 }}>Status</th>
+                  <th className="fw-medium text-muted text-end pe-4" style={{ fontSize:12 }}>Amount</th>
+                  <th className="fw-medium text-muted" style={{ fontSize:12 }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 && (
+                  <tr><td colSpan={8} className="text-center text-muted py-5">No income records found.</td></tr>
+                )}
+                {filtered.map(r => (
+                  <tr key={r.id} className="border-bottom">
+                    <td className="ps-4">
+                      <div className="fw-medium" style={{ fontSize:12 }}>{fmtD(r.date)}</div>
+                      <div className="text-muted" style={{ fontSize:11 }}>{r.ref || r.id}</div>
+                    </td>
+                    <td style={{ fontSize:13 }}>{r.customer}</td>
+                    <td>
+                      <div className="d-flex align-items-center gap-1">
+                        <div style={{ width:7, height:7, borderRadius:'50%', background: CAT_COLORS[r.category] || '#94a3b8' }}/>
+                        <span style={{ fontSize:12 }}>{r.category}</span>
+                      </div>
+                    </td>
+                    <td><span className="badge bg-light text-dark border" style={{ fontSize:11 }}>{r.method}</span></td>
+                    <td><span className="text-muted" style={{ fontSize:12 }}>{r.type}</span></td>
+                    <td>
+                      <span className={`badge border ${STATUS_CFG[r.status]?.cls}`} style={{ fontSize:11 }}>
+                        {STATUS_CFG[r.status]?.label || r.status}
+                      </span>
+                    </td>
+                    <td className="text-end pe-4">
+                      <span className="fw-bold text-success" style={{ fontSize:14 }}>+{fmt(r.amount)}</span>
+                    </td>
+                    <td>
+                      <div className="d-flex gap-1">
+                        <button className="btn btn-sm btn-outline-primary" style={{ padding:'3px 8px' }}
+                          onClick={() => openView(r)} title="View"><i className="ri-eye-line" style={{ fontSize:12 }}/></button>
+                        <button className="btn btn-sm btn-outline-secondary" style={{ padding:'3px 8px' }}
+                          onClick={() => openEdit(r)} title="Edit"><i className="ri-edit-line" style={{ fontSize:12 }}/></button>
+                        <button className="btn btn-sm btn-outline-danger" style={{ padding:'3px 8px' }}
+                          onClick={() => openDelete(r)} title="Delete"><i className="ri-delete-bin-line" style={{ fontSize:12 }}/></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              {filtered.length > 0 && (
+                <tfoot className="bg-light">
+                  <tr>
+                    <td colSpan={6} className="ps-4 fw-medium text-muted" style={{ fontSize:12 }}>
+                      Showing {filtered.length} of {records.length} records
+                    </td>
+                    <td className="text-end pe-4 fw-bold" style={{ color:'#22c55e' }}>
+                      +{fmt(filtered.filter(r=>r.status==='paid').reduce((s,r)=>s+r.amount,0))}
+                    </td>
+                    <td/>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* ── MODALS ─────────────────────────────────────────── */}
+      {activeModal && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:1050,
+          display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}
+          onClick={e => { if (e.target === e.currentTarget) closeModal() }}>
+
+          {/* VIEW */}
+          {activeModal === 'view' && selected && (
+            <div style={{ background:'#fff', borderRadius:12, width:'100%', maxWidth:460 }}>
+              <div style={{ background:'#166534', borderRadius:'12px 12px 0 0', padding:'18px 24px', color:'#fff' }}>
+                <div className="d-flex align-items-center justify-content-between">
+                  <div>
+                    <div className="fw-bold fs-15"><i className="ri-arrow-up-circle-line me-2"/>Income Record</div>
+                    <div style={{ fontSize:12, opacity:0.7, marginTop:4 }}>{selected.id} · {fmtD(selected.date)}</div>
+                  </div>
+                  <button className="btn btn-sm btn-outline-light" onClick={closeModal}><i className="ri-close-line"/></button>
+                </div>
+              </div>
+              <div className="p-4">
+                <div className="text-center mb-4">
+                  <div className="fw-bold text-success" style={{ fontSize:28 }}>+{fmt(selected.amount)}</div>
+                  <span className={`badge border ${STATUS_CFG[selected.status]?.cls} mt-1`} style={{ fontSize:12 }}>
+                    {STATUS_CFG[selected.status]?.label}
+                  </span>
+                </div>
+                {[
+                  ['Reference', selected.ref || selected.id],
+                  ['Customer', selected.customer],
+                  ['Category', selected.category],
+                  ['Payment Method', selected.method],
+                  ['Income Type', selected.type],
+                  ['Date', fmtD(selected.date)],
+                ].map(([lbl, val]) => (
+                  <div key={lbl} className="d-flex justify-content-between py-2 border-bottom">
+                    <span className="text-muted" style={{ fontSize:12 }}>{lbl}</span>
+                    <span className="fw-medium" style={{ fontSize:12 }}>{val}</span>
+                  </div>
+                ))}
+                {selected.note && (
+                  <div className="alert alert-light border mt-3 mb-0" style={{ fontSize:12 }}>
+                    <i className="ri-sticky-note-line me-1"/>{selected.note}
+                  </div>
+                )}
+                <div className="d-flex gap-2 mt-4">
+                  <button className="btn btn-outline-secondary flex-fill" onClick={closeModal}>Close</button>
+                  <button className="btn btn-primary flex-fill" onClick={() => { closeModal(); openEdit(selected) }}>
+                    <i className="ri-edit-line me-1"/>Edit
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ADD / EDIT */}
+          {(activeModal === 'add' || activeModal === 'edit') && (
+            <div style={{ background:'#fff', borderRadius:12, width:'100%', maxWidth:500, maxHeight:'90vh', overflowY:'auto' }}>
+              <div style={{ background:'#1e293b', borderRadius:'12px 12px 0 0', padding:'18px 24px', color:'#fff' }}>
+                <div className="d-flex align-items-center justify-content-between">
+                  <div className="fw-bold fs-15">
+                    <i className={`${activeModal === 'add' ? 'ri-add-circle-line' : 'ri-edit-line'} me-2`}/>
+                    {activeModal === 'add' ? 'Add Income Record' : 'Edit Income Record'}
+                  </div>
+                  <button className="btn btn-sm btn-outline-light" onClick={closeModal}><i className="ri-close-line"/></button>
+                </div>
+              </div>
+              <div className="p-4">
+                <div className="row g-3">
+                  <div className="col-md-6">
+                    <label className="form-label small fw-medium">Date <span className="text-danger">*</span></label>
+                    <input type="date" className="form-control" value={form.date}
+                      onChange={e => setForm(f => ({ ...f, date: e.target.value }))}/>
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label small fw-medium">Reference / Order ID</label>
+                    <input className="form-control" placeholder="e.g. ORD-2026-0141"
+                      value={form.ref} onChange={e => setForm(f => ({ ...f, ref: e.target.value }))}/>
+                  </div>
+                  <div className="col-12">
+                    <label className="form-label small fw-medium">Customer / Source <span className="text-danger">*</span></label>
+                    <input className="form-control" placeholder="Customer name or income source"
+                      value={form.customer} onChange={e => setForm(f => ({ ...f, customer: e.target.value }))}/>
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label small fw-medium">Category</label>
+                    <select className="form-select" value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}>
+                      {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label small fw-medium">Payment Method</label>
+                    <select className="form-select" value={form.method} onChange={e => setForm(f => ({ ...f, method: e.target.value }))}>
+                      {PAY_METHODS.map(m => <option key={m}>{m}</option>)}
+                    </select>
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label small fw-medium">Income Type</label>
+                    <select className="form-select" value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}>
+                      {INCOME_TYPES.map(t => <option key={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label small fw-medium">Status</label>
+                    <select className="form-select" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
+                      <option value="paid">Paid</option>
+                      <option value="pending">Pending</option>
+                      <option value="failed">Failed</option>
+                    </select>
+                  </div>
+                  <div className="col-12">
+                    <label className="form-label small fw-medium">Amount (₦) <span className="text-danger">*</span></label>
+                    <div className="input-group">
+                      <span className="input-group-text">₦</span>
+                      <input className="form-control" type="number" placeholder="0.00"
+                        value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}/>
+                    </div>
+                  </div>
+                  <div className="col-12">
+                    <label className="form-label small fw-medium">Notes</label>
+                    <textarea className="form-control" rows={2} placeholder="Optional note…"
+                      value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))}/>
+                  </div>
+                </div>
+                <div className="d-flex gap-2 mt-4">
+                  <button className="btn btn-outline-secondary flex-fill" onClick={closeModal}>Cancel</button>
+                  <button className="btn btn-success flex-fill" onClick={saveRecord}
+                    disabled={!form.customer || !form.amount}>
+                    <i className="ri-save-line me-1"/>
+                    {activeModal === 'add' ? 'Add Income' : 'Save Changes'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* DELETE */}
+          {activeModal === 'delete' && selected && (
+            <div style={{ background:'#fff', borderRadius:12, width:'100%', maxWidth:400 }}>
+              <div style={{ background:'#7f1d1d', borderRadius:'12px 12px 0 0', padding:'18px 24px', color:'#fff' }}>
+                <div className="d-flex align-items-center justify-content-between">
+                  <div className="fw-bold fs-15"><i className="ri-delete-bin-line me-2"/>Delete Record</div>
+                  <button className="btn btn-sm btn-outline-light" onClick={closeModal}><i className="ri-close-line"/></button>
+                </div>
+              </div>
+              <div className="p-4 text-center">
+                <div className="rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
+                  style={{ width:56, height:56, background:'#fee2e2' }}>
+                  <i className="ri-arrow-up-circle-line fs-24 text-danger"/>
+                </div>
+                <h5>Delete this income record?</h5>
+                <p className="text-muted small mb-4">
+                  <strong>{selected.id}</strong> — {selected.customer} — <strong>{fmt(selected.amount)}</strong><br/>
+                  This action cannot be undone.
+                </p>
+                <div className="d-flex gap-2">
+                  <button className="btn btn-outline-secondary flex-fill" onClick={closeModal}>Cancel</button>
+                  <button className="btn btn-danger flex-fill" onClick={deleteRecord}>
+                    <i className="ri-delete-bin-line me-1"/>Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

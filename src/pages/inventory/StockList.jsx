@@ -1,194 +1,287 @@
-import { Link } from 'react-router-dom'
+import { useState, useMemo } from 'react'
+
+const MOCK_STOCK = [
+  { id:1, name:'Basmati Rice (5kg)', sku:'GRN-RIC-001', category:'Grains & Carbs', unit:'bag',   stock:120, reorder:20, cost:4800,  price:6500,  status:'in_stock',    updated:'2026-06-25' },
+  { id:2, name:'Fresh Tomatoes',      sku:'VEG-TOM-001', category:'Vegetables',    unit:'kg',    stock:8,   reorder:15, cost:800,   price:1200,  status:'low_stock',   updated:'2026-06-26' },
+  { id:3, name:'Palm Oil (25L)',       sku:'OIL-PLM-001', category:'Grains & Carbs',unit:'crate', stock:0,   reorder:5,  cost:18000, price:24000, status:'out_of_stock', updated:'2026-06-20' },
+  { id:4, name:'Catfish (Smoked)',     sku:'SEA-CAT-001', category:'Seafood',       unit:'kg',    stock:35,  reorder:10, cost:3200,  price:4500,  status:'in_stock',    updated:'2026-06-24' },
+  { id:5, name:'Fresh Pepper (Tatashe)',sku:'VEG-PEP-001',category:'Vegetables',   unit:'kg',    stock:6,   reorder:10, cost:700,   price:1100,  status:'low_stock',   updated:'2026-06-26' },
+  { id:6, name:'Chicken (Whole)',      sku:'MEA-CHK-001', category:'Meat',          unit:'kg',    stock:52,  reorder:20, cost:2800,  price:3800,  status:'in_stock',    updated:'2026-06-25' },
+  { id:7, name:'Fresh Yam (Tuber)',    sku:'GRN-YAM-001', category:'Grains & Carbs',unit:'tuber', stock:90,  reorder:30, cost:1200,  price:1800,  status:'in_stock',    updated:'2026-06-23' },
+  { id:8, name:'Cassava Flour (2kg)', sku:'GRN-CAS-001', category:'Grains & Carbs',unit:'pack',  stock:14,  reorder:15, cost:1100,  price:1600,  status:'low_stock',   updated:'2026-06-22' },
+  { id:9, name:'Fresh Milk (1L)',      sku:'DAI-MLK-001', category:'Dairy & Eggs',  unit:'bottle',stock:40,  reorder:12, cost:900,   price:1400,  status:'in_stock',    updated:'2026-06-26' },
+  { id:10,'name':'Plantain (Bunch)',   sku:'FRM-PLT-001', category:'Fresh Farm',    unit:'bunch', stock:25,  reorder:10, cost:1500,  price:2200,  status:'in_stock',    updated:'2026-06-24' },
+]
+
+const STATUS_CONFIG = {
+  in_stock:    { label:'In Stock',     cls:'bg-success-subtle text-success' },
+  low_stock:   { label:'Low Stock',    cls:'bg-warning-subtle text-warning' },
+  out_of_stock:{ label:'Out of Stock', cls:'bg-danger-subtle text-danger'   },
+}
 
 export default function StockList() {
+  const [search, setSearch]     = useState('')
+  const [filterStatus, setFilterStatus] = useState('all')
+  const [activeModal, setActiveModal] = useState(null)
+  const [editItem, setEditItem] = useState(null)
+  const [stock, setStock]       = useState(MOCK_STOCK)
+  const [form, setForm]         = useState({ name:'', sku:'', category:'', unit:'', stock:0, reorder:10, cost:0, price:0 })
+
+  const filtered = useMemo(() => stock.filter(s => {
+    const matchSearch = s.name.toLowerCase().includes(search.toLowerCase()) ||
+                        s.sku.toLowerCase().includes(search.toLowerCase()) ||
+                        s.category.toLowerCase().includes(search.toLowerCase())
+    const matchStatus = filterStatus === 'all' || s.status === filterStatus
+    return matchSearch && matchStatus
+  }), [stock, search, filterStatus])
+
+  const totals = useMemo(() => ({
+    all:      stock.length,
+    in_stock: stock.filter(s => s.status === 'in_stock').length,
+    low:      stock.filter(s => s.status === 'low_stock').length,
+    out:      stock.filter(s => s.status === 'out_of_stock').length,
+  }), [stock])
+
+  function openAdd() {
+    setEditItem(null)
+    setForm({ name:'', sku:'', category:'', unit:'piece', stock:0, reorder:10, cost:0, price:0 })
+    setActiveModal('add')
+  }
+  function openEdit(item) {
+    setEditItem(item)
+    setForm({ name:item.name, sku:item.sku, category:item.category, unit:item.unit, stock:item.stock, reorder:item.reorder, cost:item.cost, price:item.price })
+    setActiveModal('add')
+  }
+  function openDelete(item) { setEditItem(item); setActiveModal('delete') }
+  function closeModal() { setActiveModal(null); setEditItem(null) }
+
+  function computeStatus(qty, reorder) {
+    if (qty === 0) return 'out_of_stock'
+    if (qty <= reorder) return 'low_stock'
+    return 'in_stock'
+  }
+
+  function saveForm(e) {
+    e.preventDefault()
+    const status = computeStatus(Number(form.stock), Number(form.reorder))
+    const today  = new Date().toISOString().slice(0,10)
+    if (editItem) {
+      setStock(prev => prev.map(s => s.id === editItem.id ? { ...s, ...form, status, updated: today } : s))
+    } else {
+      const newId = Math.max(...stock.map(s => s.id)) + 1
+      setStock(prev => [...prev, { id:newId, ...form, status, updated: today }])
+    }
+    closeModal()
+  }
+
+  function confirmDelete() {
+    setStock(prev => prev.filter(s => s.id !== editItem.id))
+    closeModal()
+  }
+
   return (
     <div className="container-fluid">
-      <div className="gap-2 page-heading mb-3 flex-column flex-md-row">
-              <h6 className="flex-grow-1 mb-0">Stock List</h6>
-              <ul className="breadcrumb flex-shrink-0 mb-0">
-                  <li className="breadcrumb-item"><a href="#">Inventory</a></li>
-                  <li className="breadcrumb-item active">Stock List</li>
-              </ul>
-          </div>
-          <div className="row">
-              <div className="col-12">
-                  <div className="card">
-                      <div className="card-header d-flex flex-wrap gap-3 justify-content-between align-items-center">
-                          <div className="flex-shrink-0">
-                              <label htmlFor="searchProductInput" className="form-label d-none">Search</label>
-                              <div className="position-relative">
-                                  <input type="text" className="form-control ps-9" id="searchProductInput" placeholder="Search for..." />
-                                  <i data-lucide="search" className="size-4 icon-dark position-absolute top-50 start-0 ms-3 translate-middle-y"></i>
-                              </div>
-                          </div>
-                          <div className="d-flex flex-wrap flex-md-nowrap gap-2">
-                              <div id="Status" className="min-w-52"></div>
-                              <div id="categoryOptions" className="min-w-52"></div>
-                              <div className="dropdown flex-shrink-0">
-                                  <button className="btn btn-outline-light border d-flex align-items-center" type="button" id="filterDropdownButton" data-bs-toggle="dropdown" aria-expanded="false" title="dropdown-button">
-                                      <i data-lucide="filter" className="size-4 me-1"></i> Filters
-                                  </button>
-                                  <ul className="dropdown-menu dropdown-menu-end p-3 w-64" aria-labelledby="filterDropdownButton">
-                                      <h6 className="mb-3">Filter Options</h6>
-                                      <form action="#!" id="filterForm">
-                                          <div className="mb-4">
-                                              <label className="form-label">Stock Quantity</label>
-                                              <div className="d-flex gap-2">
-                                                  <input type="number" className="form-control h-9" placeholder="Min" />
-                                                  <input type="number" className="form-control h-9" placeholder="Max" />
-                                              </div>
-                                          </div>
-                                          <h6 className="mb-2 fs-sm">Stock Status</h6>
-                                          <div className="d-flex flex-column gap-2 mb-4">
-                                              <div className="form-check">
-                                                  <input className="form-check-input mt-0" type="checkbox" id="inStock" />
-                                                  <label className="form-check-label" htmlFor="inStock">In Stock</label>
-                                              </div>
-                                              <div className="form-check">
-                                                  <input className="form-check-input mt-0" type="checkbox" id="lowStock" />
-                                                  <label className="form-check-label" htmlFor="lowStock">Low Stock</label>
-                                              </div>
-                                              <div className="form-check">
-                                                  <input className="form-check-input mt-0" type="checkbox" id="outStock" />
-                                                  <label className="form-check-label" htmlFor="outStock">Out of Stock</label>
-                                              </div>
-                                          </div>
-                                          <div className="d-flex align-items-center justify-content-end gap-2 mt-4">
-                                              <button type="reset" className="btn btn-light btn-sm">Reset</button>
-                                              <button type="submit" className="btn btn-primary btn-sm">Apply</button>
-                                          </div>
-                                      </form>
-                                  </ul>
-                              </div>
-                              <button type="button" className="btn btn-primary d-flex align-items-center gap-1 flex-shrink-0" data-bs-toggle="modal" data-bs-target="#addProductModal" id="addProductBtn"><i data-lucide="plus" className="size-4"></i> Add Product</button>
-                          </div>
-                      </div>
-                      <div className="card-body pt-0">
-                          <div className="table-card table-responsive">
-                              <table className="table align-middle text-nowrap mb-0">
-                                  <thead>
-                                      <tr className="bg-light border-bottom">
-                                          <th>
-                                              <div className="form-check check-primary">
-                                                  <input className="form-check-input" type="checkbox" id="checAllData" />
-                                              </div>
-                                          </th>
-                                          <th className="fw-medium text-muted sortable" data-column="product">Product</th>
-                                          <th className="fw-medium text-muted sortable" data-column="sku">SKU</th>
-                                          <th className="fw-medium text-muted sortable" data-column="category">Category</th>
-                                          <th className="fw-medium text-muted sortable" data-column="stock">Stock</th>
-                                          <th className="fw-medium text-muted sortable" data-column="reorderLevel">Reorder Level</th>
-                                          <th className="fw-medium text-muted sortable" data-column="status">Status</th>
-                                          <th className="fw-medium text-muted sortable" data-column="cost">Cost (₹)</th>
-                                          <th className="fw-medium text-muted sortable" data-column="price">Price (₹)</th>
-                                          <th className="fw-medium text-muted sortable" data-column="lastUpdated">Last Updated</th>
-                                          <th className="fw-medium text-muted">Action</th>
-                                      </tr>
-                                  </thead>
-                                  <tbody id="inventoryTableBody">
+      {/* Breadcrumb */}
+      <div className="gap-2 page-heading mb-3">
+        <h6 className="flex-grow-1 mb-0">Stock List</h6>
+        <ul className="breadcrumb flex-shrink-0 mb-0">
+          <li className="breadcrumb-item"><a href="#">Inventory</a></li>
+          <li className="breadcrumb-item active">Stock List</li>
+        </ul>
+      </div>
 
-                                  </tbody>
-                              </table>
-                          </div>
-                          <div className="row align-items-center g-3 mt-2">
-                              <div className="col-md-6">
-                                  <p className="text-muted text-center text-md-start mb-0" id="paginationInfo">
-                                      Showing <b className="me-1">1-0</b> of <b className="ms-1">0</b> Results
-                                  </p>
-                              </div>
-                              <div className="col-md-6">
-                                  <nav aria-label="Page navigation example">
-                                      <ul className="pagination justify-content-center justify-content-md-end mb-0" id="pagination">
-
-                                      </ul>
-                                  </nav>
-                              </div>
-                          </div>
-                      </div>
-                  </div>
+      {/* Stat cards */}
+      <div className="row g-3 mb-4">
+        {[
+          { label:'Total SKUs',    value: totals.all,      icon:'ri-box-3-line',           color:'#405189', filter:'all' },
+          { label:'In Stock',      value: totals.in_stock, icon:'ri-checkbox-circle-line',  color:'#0ab39c', filter:'in_stock' },
+          { label:'Low Stock',     value: totals.low,      icon:'ri-alert-line',            color:'#f7b84b', filter:'low_stock' },
+          { label:'Out of Stock',  value: totals.out,      icon:'ri-close-circle-line',     color:'#f06548', filter:'out_of_stock' },
+        ].map(c => (
+          <div className="col-6 col-xl-3" key={c.label}>
+            <div className="card mb-0 cursor-pointer" style={{ borderLeft:`3px solid ${c.color}` }} onClick={() => setFilterStatus(c.filter)}>
+              <div className="card-body d-flex align-items-center gap-3 py-3">
+                <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                  style={{ width:44, height:44, background:`${c.color}1a` }}>
+                  <i className={`${c.icon} fs-20`} style={{ color:c.color }}></i>
+                </div>
+                <div>
+                  <div className="fs-22 fw-bold" style={{ color:c.color }}>{c.value}</div>
+                  <div className="text-muted" style={{ fontSize:12 }}>{c.label}</div>
+                </div>
               </div>
+            </div>
           </div>
+        ))}
+      </div>
 
+      {/* Table card */}
+      <div className="card">
+        <div className="card-header d-flex flex-wrap gap-3 justify-content-between align-items-center">
+          <div className="position-relative">
+            <input type="text" className="form-control ps-9" placeholder="Search product, SKU…" value={search} onChange={e => setSearch(e.target.value)} style={{ minWidth:220 }} />
+            <i className="ri-search-line position-absolute top-50 start-0 ms-3 translate-middle-y text-muted"></i>
+          </div>
+          <div className="d-flex gap-2 ms-auto flex-wrap">
+            <select className="form-select" style={{ width:'auto' }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+              <option value="all">All Status</option>
+              <option value="in_stock">In Stock</option>
+              <option value="low_stock">Low Stock</option>
+              <option value="out_of_stock">Out of Stock</option>
+            </select>
+            <button className="btn btn-primary d-flex align-items-center gap-1" onClick={openAdd}>
+              <i className="ri-add-line"></i> Add Product
+            </button>
+          </div>
+        </div>
+        <div className="card-body pt-0">
+          <div className="table-responsive">
+            <table className="table align-middle text-nowrap mb-0">
+              <thead>
+                <tr className="bg-light border-bottom">
+                  <th><input type="checkbox" className="form-check-input" /></th>
+                  <th className="fw-medium text-muted">Product</th>
+                  <th className="fw-medium text-muted">SKU</th>
+                  <th className="fw-medium text-muted">Category</th>
+                  <th className="fw-medium text-muted">Stock</th>
+                  <th className="fw-medium text-muted">Reorder</th>
+                  <th className="fw-medium text-muted">Status</th>
+                  <th className="fw-medium text-muted">Cost (₦)</th>
+                  <th className="fw-medium text-muted">Price (₦)</th>
+                  <th className="fw-medium text-muted">Updated</th>
+                  <th className="fw-medium text-muted">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 && (
+                  <tr><td colSpan={11} className="text-center py-5 text-muted">
+                    <i className="ri-box-3-line fs-2 d-block mb-2"></i>No products found
+                  </td></tr>
+                )}
+                {filtered.map(s => {
+                  const sc = STATUS_CONFIG[s.status]
+                  return (
+                    <tr key={s.id}>
+                      <td><input type="checkbox" className="form-check-input" /></td>
+                      <td>
+                        <div className="fw-medium">{s.name}</div>
+                        <div className="text-muted" style={{ fontSize:11 }}>{s.unit}</div>
+                      </td>
+                      <td><code style={{ fontSize:12 }}>{s.sku}</code></td>
+                      <td><span className="badge bg-light text-dark border">{s.category}</span></td>
+                      <td>
+                        <span className="fw-bold" style={{ color: s.status === 'out_of_stock' ? '#f06548' : s.status === 'low_stock' ? '#f7b84b' : '#0ab39c' }}>
+                          {s.stock}
+                        </span>
+                      </td>
+                      <td className="text-muted">{s.reorder}</td>
+                      <td><span className={`badge ${sc.cls}`}>{sc.label}</span></td>
+                      <td>₦{s.cost.toLocaleString()}</td>
+                      <td>₦{s.price.toLocaleString()}</td>
+                      <td className="text-muted">{s.updated}</td>
+                      <td>
+                        <div className="d-flex gap-1">
+                          <button className="btn btn-sm btn-soft-primary p-1 px-2" onClick={() => openEdit(s)} title="Edit"><i className="ri-pencil-line"></i></button>
+                          <button className="btn btn-sm btn-soft-danger p-1 px-2" onClick={() => openDelete(s)} title="Delete"><i className="ri-delete-bin-line"></i></button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-3 text-muted" style={{ fontSize:13 }}>Showing {filtered.length} of {stock.length} products</div>
+        </div>
+      </div>
 
-          <div className="modal fade" id="addProductModal" tabIndex="-1" aria-labelledby="addProductModalLabel" aria-hidden="true">
-              <div className="modal-dialog modal-dialog-centered">
-                  <div className="modal-content overflow-hidden">
-                      <div className="h-24 rounded-top-2 pattern-bg"></div>
-                      <div className="modal-body position-relative">
-                          <form id="productForm">
-                              <input type="hidden" id="productId" />
-                              <div className="text-center mb-2">
-                                  <label className="avatar border bg-body-secondary size-24 rounded p-3 mt-n20 cursor-pointer position-relative d-inline-block overflow-hidden" htmlFor="imageInput" id="imagePreviewLabel">
-                                      <img id="imagePreview" src="#" className="w-100 h-100 object-fit-cover d-none" />
-                                      <div id="uploadIcon" className="d-flex align-items-center justify-content-center w-100 h-100 position-absolute top-0 start-0">
-                                          <i className="ri-upload-cloud-2-line fs-2xl text-muted"></i>
-                                      </div>
-                                      <input type="file" id="imageInput" className="d-none" accept="image/*" />
-                                  </label>
-                              </div>
-                              <div className="row g-3">
-                                  <div className="col-12">
-                                      <label htmlFor="productName" className="form-label">Product Name <span className="text-danger">*</span></label>
-                                      <input type="text" className="form-control" id="productName" placeholder="e.g., Apple iPhone 15" required />
-                                  </div>
-                                  <div className="col-md-6">
-                                      <label htmlFor="sku" className="form-label">SKU <span className="text-danger">*</span></label>
-                                      <input type="text" className="form-control" id="sku" placeholder="e.g., APL-15" required />
-                                  </div>
-                                  <div className="col-md-6">
-                                      <label htmlFor="stock" className="form-label">Stock <span className="text-danger">*</span></label>
-                                      <input type="number" className="form-control" id="stock" min="0" placeholder="0" required />
-                                  </div>
-                                  <div className="col-12">
-                                      <label htmlFor="category" className="form-label">Category <span className="text-danger">*</span></label>
-                                      <input type="text" className="form-control" id="category" placeholder="e.g., Electronics" required />
-                                  </div>
-                                  <div className="col-md-6">
-                                      <label htmlFor="reorderLevel" className="form-label">Reorder Level</label>
-                                      <input type="number" className="form-control" id="reorderLevel" min="0" placeholder="0" />
-                                  </div>
-                                  <div className="col-md-6">
-                                      <label htmlFor="status" className="form-label">Status</label>
-                                      <div id="statusSelect"></div>
-                                  </div>
-                                  <div className="col-md-6">
-                                      <label htmlFor="cost" className="form-label">Cost (₹) <span className="text-danger">*</span></label>
-                                      <input type="number" className="form-control" id="cost" min="0" step="0.01" placeholder="0" required />
-                                  </div>
-                                  <div className="col-md-6">
-                                      <label htmlFor="price" className="form-label">Price (₹) <span className="text-danger">*</span></label>
-                                      <input type="number" className="form-control" id="price" min="0" step="0.01" placeholder="0" required />
-                                  </div>
-                              </div>
-
-                              <div className="d-flex gap-2 mt-7">
-                                  <button type="button" className="btn btn-light w-100" data-bs-dismiss="modal">Close</button>
-                                  <button type="submit" className="btn btn-primary w-100" id="saveProductBtn">Save Product</button>
-                              </div>
-                          </form>
+      {/* Add / Edit Modal */}
+      {activeModal === 'add' && (
+        <>
+          <div className="modal fade show d-block" tabIndex="-1" style={{ zIndex:1055 }}>
+            <div className="modal-dialog modal-dialog-centered modal-lg">
+              <div className="modal-content">
+                <div className="modal-header">
+                  <h6 className="modal-title">{editItem ? 'Edit Product Stock' : 'Add Product to Stock'}</h6>
+                  <button className="btn-close" onClick={closeModal}></button>
+                </div>
+                <div className="modal-body">
+                  <form onSubmit={saveForm}>
+                    <div className="row g-3">
+                      <div className="col-12">
+                        <label className="form-label fw-medium">Product Name <span className="text-danger">*</span></label>
+                        <input className="form-control" required value={form.name} onChange={e => setForm(f => ({...f, name:e.target.value}))} placeholder="e.g., Basmati Rice 5kg" />
                       </div>
-                  </div>
+                      <div className="col-md-4">
+                        <label className="form-label fw-medium">SKU <span className="text-danger">*</span></label>
+                        <input className="form-control" required value={form.sku} onChange={e => setForm(f => ({...f, sku:e.target.value}))} placeholder="e.g., GRN-RIC-001" />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label fw-medium">Category</label>
+                        <select className="form-select" value={form.category} onChange={e => setForm(f => ({...f, category:e.target.value}))}>
+                          <option value="">— Select —</option>
+                          {['Grains & Carbs','Vegetables','Meat','Seafood','Dairy & Eggs','Beverages','Fresh Farm','Meals'].map(c => <option key={c}>{c}</option>)}
+                        </select>
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label fw-medium">Unit</label>
+                        <select className="form-select" value={form.unit} onChange={e => setForm(f => ({...f, unit:e.target.value}))}>
+                          {['kg','g','litre','ml','pack','piece','bunch','bag','crate','tuber','bottle','dozen','carton'].map(u => <option key={u}>{u}</option>)}
+                        </select>
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label fw-medium">Stock Qty <span className="text-danger">*</span></label>
+                        <input type="number" className="form-control" min="0" required value={form.stock} onChange={e => setForm(f => ({...f, stock:e.target.value}))} />
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label fw-medium">Reorder Level</label>
+                        <input type="number" className="form-control" min="0" value={form.reorder} onChange={e => setForm(f => ({...f, reorder:e.target.value}))} />
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label fw-medium">Cost (₦)</label>
+                        <input type="number" className="form-control" min="0" value={form.cost} onChange={e => setForm(f => ({...f, cost:e.target.value}))} />
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label fw-medium">Selling Price (₦)</label>
+                        <input type="number" className="form-control" min="0" value={form.price} onChange={e => setForm(f => ({...f, price:e.target.value}))} />
+                      </div>
+                    </div>
+                    <div className="d-flex gap-2 mt-4">
+                      <button type="button" className="btn btn-light w-100" onClick={closeModal}>Cancel</button>
+                      <button type="submit" className="btn btn-primary w-100">{editItem ? 'Save Changes' : 'Add to Stock'}</button>
+                    </div>
+                  </form>
+                </div>
               </div>
+            </div>
           </div>
+          <div className="modal-backdrop fade show" style={{ zIndex:1054 }} onClick={closeModal}></div>
+        </>
+      )}
 
-
-          <div className="modal fade" id="deleteModal" tabIndex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-              <div className="modal-dialog modal-dialog-centered modal-xs">
-                  <div className="modal-content p-7 text-center">
-                      <div className="d-flex justify-content-center mb-4">
-                          <div className="size-14 bg-danger-subtle rounded-circle d-flex align-items-center justify-content-center size-16">
-                              <i className="ri-delete-bin-line text-danger fs-2xl"></i>
-                          </div>
-                      </div>
-                      <h5 className="mb-4 lh-base">Are you sure you want to delete this Product?</h5>
-                      <input type="hidden" id="deleteWarrantyId" />
-                      <div className="d-flex justify-content-center align-items-center gap-2">
-                          <button type="button" className="btn btn-danger" id="confirmDeleteBtn">Delete</button>
-                          <button type="button" className="btn btn-link text-reset" data-bs-dismiss="modal">Cancel</button>
-                      </div>
+      {/* Delete Modal */}
+      {activeModal === 'delete' && (
+        <>
+          <div className="modal fade show d-block" tabIndex="-1" style={{ zIndex:1055 }}>
+            <div className="modal-dialog modal-dialog-centered modal-sm">
+              <div className="modal-content p-4 text-center">
+                <div className="d-flex justify-content-center mb-3">
+                  <div className="rounded-circle bg-danger-subtle d-flex align-items-center justify-content-center" style={{ width:56, height:56 }}>
+                    <i className="ri-delete-bin-line text-danger fs-22"></i>
                   </div>
+                </div>
+                <h6 className="mb-1">Remove from Stock?</h6>
+                <p className="text-muted mb-4" style={{ fontSize:13 }}>{editItem?.name}</p>
+                <div className="d-flex gap-2">
+                  <button className="btn btn-light w-100" onClick={closeModal}>Cancel</button>
+                  <button className="btn btn-danger w-100" onClick={confirmDelete}>Delete</button>
+                </div>
               </div>
+            </div>
           </div>
+          <div className="modal-backdrop fade show" style={{ zIndex:1054 }} onClick={closeModal}></div>
+        </>
+      )}
     </div>
   )
 }

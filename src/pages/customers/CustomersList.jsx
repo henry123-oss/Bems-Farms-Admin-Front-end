@@ -1,565 +1,305 @@
+import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 
+const fmt    = n => `₦${Number(n).toLocaleString()}`
+const ini    = name => name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+const fmtPts = n => Number(n).toLocaleString() + ' pts'
+
+const INIT_CUSTOMERS = [
+  { id:'CUS-001', name:'Adaeze Nwosu',    phone:'08031234567', email:'adaeze.nwosu@gmail.com',    zone:'Lekki Phase 1',   joined:'2024-03-14', orders:24, totalSpent:412_000, points:4120,  tier:'Gold',     status:'active',   lastOrder:'2026-06-25' },
+  { id:'CUS-002', name:'Seun Adesanya',   phone:'07056789012', email:'seun.adesanya@yahoo.com',   zone:'Ikeja GRA',       joined:'2024-07-02', orders:18, totalSpent:284_500, points:2845,  tier:'Silver',   status:'active',   lastOrder:'2026-06-27' },
+  { id:'CUS-003', name:'Chukwuemeka Eze', phone:'09012345678', email:'emeka.eze@hotmail.com',     zone:'Surulere',        joined:'2025-01-18', orders:7,  totalSpent:98_200,  points:982,   tier:'Bronze',   status:'active',   lastOrder:'2026-06-22' },
+  { id:'CUS-004', name:'Funke Oladele',   phone:'08023456789', email:'funke.oladele@gmail.com',   zone:'Victoria Island', joined:'2023-11-05', orders:41, totalSpent:820_000, points:9840,  tier:'Platinum', status:'active',   lastOrder:'2026-06-27' },
+  { id:'CUS-005', name:'Tolulope Badmus', phone:'07034512890', email:'tolu.badmus@gmail.com',     zone:'Ajah',            joined:'2025-03-22', orders:5,  totalSpent:62_400,  points:624,   tier:'Bronze',   status:'active',   lastOrder:'2026-06-18' },
+  { id:'CUS-006', name:'Ngozi Umeh',      phone:'08145678901', email:'ngozi.umeh@gmail.com',      zone:'Yaba',            joined:'2024-09-10', orders:12, totalSpent:178_000, points:1780,  tier:'Silver',   status:'active',   lastOrder:'2026-06-24' },
+  { id:'CUS-007', name:'Babatunde Ojo',   phone:'08067890123', email:'tunde.ojo@company.ng',      zone:'Gbagada',         joined:'2024-05-30', orders:29, totalSpent:524_000, points:5240,  tier:'Gold',     status:'active',   lastOrder:'2026-06-26' },
+  { id:'CUS-008', name:'Aminat Suleiman', phone:'07089012345', email:'aminat.s@gmail.com',        zone:'Ikorodu',         joined:'2025-05-11', orders:3,  totalSpent:28_500,  points:285,   tier:'Bronze',   status:'active',   lastOrder:'2026-06-10' },
+  { id:'CUS-009', name:'Emeka Okonkwo',   phone:'09034567890', email:'emeka.okonkwo@gmail.com',   zone:'Lekki Phase 2',   joined:'2024-02-19', orders:33, totalSpent:648_000, points:7200,  tier:'Gold',     status:'active',   lastOrder:'2026-06-23' },
+  { id:'CUS-010', name:'Kemi Adeleke',    phone:'08156789012', email:'kemi.adeleke@yahoo.com',    zone:'Maryland',        joined:'2025-02-08', orders:8,  totalSpent:112_000, points:1120,  tier:'Bronze',   status:'inactive', lastOrder:'2026-04-30' },
+  { id:'CUS-011', name:'Chidi Okeke',     phone:'07023456789', email:'chidi.okeke@gmail.com',     zone:'Oshodi',          joined:'2024-08-14', orders:15, totalSpent:234_000, points:2340,  tier:'Silver',   status:'active',   lastOrder:'2026-06-20' },
+  { id:'CUS-012', name:'Bisi Awojobi',    phone:'08178901234', email:'bisi.awojobi@gmail.com',    zone:'Ogba',            joined:'2023-09-22', orders:52, totalSpent:1_040_000,points:11200,tier:'Platinum', status:'active',   lastOrder:'2026-06-27' },
+  { id:'CUS-013', name:'Yusuf Abdullahi', phone:'09045678901', email:'yusuf.abdullahi@yahoo.com', zone:'Sangotedo',       joined:'2025-04-03', orders:4,  totalSpent:44_000,  points:440,   tier:'Bronze',   status:'active',   lastOrder:'2026-06-15' },
+  { id:'CUS-014', name:'Chioma Obi',      phone:'08090123456', email:'chioma.obi@gmail.com',      zone:'Anthony Village', joined:'2024-12-01', orders:10, totalSpent:152_000, points:1520,  tier:'Silver',   status:'active',   lastOrder:'2026-06-21' },
+  { id:'CUS-015', name:'Lanre Fasanya',   phone:'07012345678', email:'lanre.fasanya@outlook.com', zone:'Opebi',           joined:'2024-04-17', orders:21, totalSpent:360_000, points:3600,  tier:'Silver',   status:'inactive', lastOrder:'2026-05-12' },
+]
+
+const TIER_CFG = {
+  Platinum:{ bg:'#f5f3ff', color:'#7c3aed', border:'#ddd6fe', icon:'ri-vip-crown-2-fill'  },
+  Gold:    { bg:'#fffbeb', color:'#d97706', border:'#fde68a', icon:'ri-medal-2-fill'       },
+  Silver:  { bg:'#f8fafc', color:'#64748b', border:'#cbd5e1', icon:'ri-award-fill'         },
+  Bronze:  { bg:'#fff7ed', color:'#c2410c', border:'#fed7aa', icon:'ri-star-half-fill'     },
+}
+const STATUS_CFG = {
+  active:  { bg:'#f0fdf4', color:'#16a34a', border:'#bbf7d0', label:'Active'   },
+  inactive:{ bg:'#fef2f2', color:'#dc2626', border:'#fecaca', label:'Inactive' },
+}
+const AVATAR_COLORS = ['#3b82f6','#22c55e','#f59e0b','#8b5cf6','#0ea5e9','#ec4899','#f97316','#14b8a6','#6366f1','#84cc16','#a855f7','#ef4444','#10b981','#d97706','#6366f1']
+
 export default function CustomersList() {
+  const [customers, setCustomers] = useState(INIT_CUSTOMERS)
+  const [search, setSearch]   = useState('')
+  const [filterTier, setTier] = useState('all')
+  const [filterSt, setSt]     = useState('all')
+  const [selected, setSelected] = useState(null)
+  const [modal, setModal]     = useState(null) // 'view' | 'suspend' | 'delete'
+
+  const filtered = useMemo(() => customers.filter(c => {
+    if (filterTier !== 'all' && c.tier !== filterTier) return false
+    if (filterSt   !== 'all' && c.status !== filterSt) return false
+    if (search) {
+      const q = search.toLowerCase()
+      return c.name.toLowerCase().includes(q) || c.phone.includes(q) ||
+             c.email.toLowerCase().includes(q) || c.zone.toLowerCase().includes(q) || c.id.toLowerCase().includes(q)
+    }
+    return true
+  }), [customers, search, filterTier, filterSt])
+
+  const closeModal = () => { setModal(null); setSelected(null) }
+
+  function toggleStatus(c) {
+    setCustomers(prev => prev.map(x => x.id === c.id
+      ? { ...x, status: x.status === 'active' ? 'inactive' : 'active' } : x))
+  }
+  function deleteCustomer() {
+    setCustomers(prev => prev.filter(c => c.id !== selected.id))
+    closeModal()
+  }
+
+  // KPIs
+  const totalRevenue = customers.reduce((s,c)=>s+c.totalSpent, 0)
+  const avgOrderVal  = Math.round(totalRevenue / customers.reduce((s,c)=>s+c.orders,0))
+  const newThisMonth = customers.filter(c=>c.joined>='2026-06-01').length
+  const platinum     = customers.filter(c=>c.tier==='Platinum').length
+
   return (
     <div className="container-fluid">
-      <div className="gap-2 page-heading mb-3 flex-column flex-md-row">
-              <h6 className="flex-grow-1 mb-0">Customers List</h6>
-              <ul className="breadcrumb flex-shrink-0 mb-0">
-                  <li className="breadcrumb-item"><a href="#">Customers</a></li>
-                  <li className="breadcrumb-item active">Customers List</li>
-              </ul>
-          </div>
-          <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xxl-5">
-              <div className="col">
-                  <div className="card p-4">
-                      <div className="d-flex justify-content-between gap-2 align-items-center mb-8">
-                          <div className="d-flex align-items-center gap-3">
-                              <div className="size-10 avatar bg-primary text-white rounded-circle">
-                                  <div data-lucide="users" className="size-5"></div>
-                              </div>
-                              <h6 className="fs-16 mb-0 fw-medium">Total Customers</h6>
-                          </div>
-                          <div className="dropdown">
-                              <a href="#" className="link link-custom-primary" data-bs-toggle="dropdown"><i className="ri-more-2-fill fs-lg"></i></a>
-                              <ul className="dropdown-menu dropdown-menu-end">
-                                  <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center"><i className="ri-eye-line"></i> View</a></li>
-                                  <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center"><i className="ri-pencil-line"></i> Edit</a></li>
-                                  <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center text-danger"><i className="ri-delete-bin-5-line"></i> Delete</a></li>
-                              </ul>
-                          </div>
-                      </div>
-                      <div className="d-flex align-items-center gap-5">
-                          <h4 className="mb-0 font-base">3,482</h4>
-                          <p className="mb-0">
-                              <span className="text-success fw-medium"><i data-lucide="arrow-big-up-dash" className="size-4 me-1"></i>4.2%</span>
-                              <span className="text-muted ms-1">vs last month</span>
-                          </p>
-                      </div>
-                  </div>
-              </div>
-              <div className="col">
-                  <div className="card p-4">
-                      <div className="d-flex justify-content-between gap-2 align-items-center mb-8">
-                          <div className="d-flex align-items-center gap-3">
-                              <div className="size-10 avatar bg-success text-white rounded-circle">
-                                  <div data-lucide="user-check" className="size-5"></div>
-                              </div>
-                              <h6 className="fs-16 mb-0 fw-medium">Active Customers</h6>
-                          </div>
-                          <div className="dropdown">
-                              <a href="#" className="link link-custom-primary" data-bs-toggle="dropdown"><i className="ri-more-2-fill fs-lg"></i></a>
-                              <ul className="dropdown-menu dropdown-menu-end">
-                                  <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center"><i className="ri-eye-line"></i> View</a></li>
-                                  <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center"><i className="ri-pencil-line"></i> Edit</a></li>
-                                  <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center text-danger"><i className="ri-delete-bin-5-line"></i> Delete</a></li>
-                              </ul>
-                          </div>
-                      </div>
-                      <div className="d-flex align-items-center gap-5">
-                          <h4 className="mb-0 font-base">2,916</h4>
-                          <p className="mb-0">
-                              <span className="text-success fw-medium"><i data-lucide="arrow-big-up-dash" className="size-4 me-1"></i>83.7%</span>
-                              <span className="text-muted ms-1">engagement</span>
-                          </p>
-                      </div>
-                  </div>
-              </div>
-              <div className="col">
-                  <div className="card p-4">
-                      <div className="d-flex justify-content-between gap-2 align-items-center mb-8">
-                          <div className="d-flex align-items-center gap-3">
-                              <div className="size-10 avatar bg-info text-white rounded-circle">
-                                  <div data-lucide="crown" className="size-5"></div>
-                              </div>
-                              <h6 className="fs-16 mb-0 fw-medium">VIP Customers</h6>
-                          </div>
-                          <div className="dropdown">
-                              <a href="#" className="link link-custom-primary" data-bs-toggle="dropdown"><i className="ri-more-2-fill fs-lg"></i></a>
-                              <ul className="dropdown-menu dropdown-menu-end">
-                                  <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center"><i className="ri-eye-line"></i> View</a></li>
-                                  <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center"><i className="ri-pencil-line"></i> Edit</a></li>
-                                  <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center text-danger"><i className="ri-delete-bin-5-line"></i> Delete</a></li>
-                              </ul>
-                          </div>
-                      </div>
-                      <div className="d-flex align-items-center gap-5">
-                          <h4 className="mb-0 font-base">428</h4>
-                          <p className="mb-0">
-                              <span className="text-success fw-medium"><i data-lucide="arrow-big-up-dash" className="size-4 me-1"></i>72.6%</span>
-                              <span className="text-muted ms-1">high value</span>
-                          </p>
-                      </div>
-                  </div>
-              </div>
-              <div className="col">
-                  <div className="card p-4">
-                      <div className="d-flex justify-content-between gap-2 align-items-center mb-8">
-                          <div className="d-flex align-items-center gap-3">
-                              <div className="size-10 avatar bg-warning text-white rounded-circle">
-                                  <div data-lucide="user-plus" className="size-5"></div>
-                              </div>
-                              <h6 className="fs-16 mb-0 fw-medium">New Customers</h6>
-                          </div>
-                          <div className="dropdown">
-                              <a href="#" className="link link-custom-primary" data-bs-toggle="dropdown"><i className="ri-more-2-fill fs-lg"></i></a>
-                              <ul className="dropdown-menu dropdown-menu-end">
-                                  <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center"><i className="ri-eye-line"></i> View</a></li>
-                                  <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center"><i className="ri-pencil-line"></i> Edit</a></li>
-                                  <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center text-danger"><i className="ri-delete-bin-5-line"></i> Delete</a></li>
-                              </ul>
-                          </div>
-                      </div>
-                      <div className="d-flex align-items-center gap-5">
-                          <h4 className="mb-0 font-base">312</h4>
-                          <p className="mb-0">
-                              <span className="text-success fw-medium"><i data-lucide="arrow-big-up-dash" className="size-4 me-1"></i>6.1%</span>
-                              <span className="text-muted ms-1">this month</span>
-                          </p>
-                      </div>
-                  </div>
-              </div>
-              <div className="col">
-                  <div className="card p-4">
-                      <div className="d-flex justify-content-between gap-2 align-items-center mb-8">
-                          <div className="d-flex align-items-center gap-3">
-                              <div className="size-10 avatar bg-danger text-white rounded-circle">
-                                  <div data-lucide="user-x" className="size-5"></div>
-                              </div>
-                              <h6 className="fs-16 mb-0 fw-medium">Inactive Customers</h6>
-                          </div>
-                          <div className="dropdown">
-                              <a href="#" className="link link-custom-primary" data-bs-toggle="dropdown"><i className="ri-more-2-fill fs-lg"></i></a>
-                              <ul className="dropdown-menu dropdown-menu-end">
-                                  <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center"><i className="ri-eye-line"></i> View</a></li>
-                                  <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center"><i className="ri-pencil-line"></i> Edit</a></li>
-                                  <li><a href="#" className="dropdown-item d-flex gap-3 align-items-center text-danger"><i className="ri-delete-bin-5-line"></i> Delete</a></li>
-                              </ul>
-                          </div>
-                      </div>
-                      <div className="d-flex align-items-center gap-5">
-                          <h4 className="mb-0 font-base">566</h4>
-                          <p className="mb-0">
-                              <span className="text-danger fw-medium"><i data-lucide="arrow-big-down-dash" className="size-4 me-1"></i>16.3%</span>
-                              <span className="text-muted ms-1">need follow-up</span>
-                          </p>
-                      </div>
-                  </div>
-              </div>
-          </div>
-          <div className="card">
-              <div className="card-header d-flex flex-wrap gap-4 align-items-center gap-2 justify-content-between">
+      {/* Header */}
+      <div className="page-heading d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+        <div>
+          <h6 className="mb-0">Online Customers</h6>
+          <p className="text-muted mb-0" style={{fontSize:12}}>
+            Self-registered customers ordering via the Bems Farms app &amp; website
+          </p>
+        </div>
+        <ul className="breadcrumb mb-0">
+          <li className="breadcrumb-item text-muted">Customers</li>
+          <li className="breadcrumb-item active">All Customers</li>
+        </ul>
+      </div>
+
+      {/* KPIs */}
+      <div className="row g-3 mb-4">
+        {[
+          { label:'Total Customers',   val:customers.length,      icon:'ri-group-line',             color:'#3b82f6', bg:'#eff6ff' },
+          { label:'Active',            val:customers.filter(c=>c.status==='active').length, icon:'ri-user-follow-line', color:'#22c55e', bg:'#f0fdf4' },
+          { label:'New This Month',    val:newThisMonth,           icon:'ri-user-add-line',          color:'#0ea5e9', bg:'#f0f9ff' },
+          { label:'Platinum Members',  val:platinum,               icon:'ri-vip-crown-2-line',       color:'#8b5cf6', bg:'#f5f3ff' },
+          { label:'Total Revenue',     val:fmt(totalRevenue),      icon:'ri-money-naira-circle-line',color:'#22c55e', bg:'#f0fdf4' },
+          { label:'Avg Order Value',   val:fmt(avgOrderVal),       icon:'ri-shopping-cart-2-line',   color:'#f59e0b', bg:'#fffbeb' },
+        ].map((k,i) => (
+          <div key={i} className="col-6 col-md-4 col-xl-2">
+            <div className="card border-0 shadow-sm h-100">
+              <div className="card-body p-3">
+                <div className="d-flex align-items-start justify-content-between">
                   <div>
-                      <h5 className="card-title mb-1">Customers List</h5>
-                      <p className="text-muted">total customers: <span className="text-body fw-medium">3,482</span></p>
+                    <div className="text-muted mb-1" style={{fontSize:11}}>{k.label}</div>
+                    <div className="fw-bold" style={{fontSize:18}}>{k.val}</div>
                   </div>
-                  <div className="d-flex flex-wrap gap-2 align-items-center">
-                      <div className="position-relative">
-                          <input type="text" id="lostItemSearch" className="form-control ps-10" placeholder="Search Customer..." />
-                          <i data-lucide="search" className="size-4 icon-dark position-absolute top-50 start-0 ms-4 translate-middle-y"></i>
-                      </div>
-                      <div className="dropdown">
-                          <button type="button" className="btn btn-outline-light border" data-bs-toggle="dropdown" aria-expanded="false"><i className="ri-edit-line me-1"></i>Customize</button>
-                          <div className="dropdown-menu dropdown-menu-end w-44 p-4">
-                              <div className="form-check check-primary mb-2">
-                                  <input className="form-check-input column-toggle" type="checkbox" id="colCustomerID" data-column="1" />
-                                  <label className="form-check-label" htmlFor="colCustomerID">Customer ID</label>
-                              </div>
-                              <div className="form-check check-primary mb-2">
-                                  <input className="form-check-input column-toggle" type="checkbox" id="colCustomer" data-column="2" defaultChecked />
-                                  <label className="form-check-label" htmlFor="colCustomer">Customer</label>
-                              </div>
-                              <div className="form-check check-primary mb-2">
-                                  <input className="form-check-input column-toggle" type="checkbox" id="colPhone" data-column="3" />
-                                  <label className="form-check-label" htmlFor="colPhone">Phone</label>
-                              </div>
-                              <div className="form-check check-primary mb-2">
-                                  <input className="form-check-input column-toggle" type="checkbox" id="colCity" data-column="4" />
-                                  <label className="form-check-label" htmlFor="colCity">City</label>
-                              </div>
-                              <div className="form-check check-primary mb-2">
-                                  <input className="form-check-input column-toggle" type="checkbox" id="colOrders" data-column="5" />
-                                  <label className="form-check-label" htmlFor="colOrders">Orders</label>
-                              </div>
-                              <div className="form-check check-primary mb-2">
-                                  <input className="form-check-input column-toggle" type="checkbox" id="colTotalSpend" data-column="6" defaultChecked />
-                                  <label className="form-check-label" htmlFor="colTotalSpend">Total Spend</label>
-                              </div>
-                              <div className="form-check check-primary mb-2">
-                                  <input className="form-check-input column-toggle" type="checkbox" id="colCustomerType" data-column="7" />
-                                  <label className="form-check-label" htmlFor="colCustomerType">Customer Type</label>
-                              </div>
-                              <div className="form-check check-primary mb-2">
-                                  <input className="form-check-input column-toggle" type="checkbox" id="colLastOrder" data-column="8" defaultChecked />
-                                  <label className="form-check-label" htmlFor="colLastOrder">Last Order</label>
-                              </div>
-                              <div className="form-check check-primary mb-2">
-                                  <input className="form-check-input column-toggle" type="checkbox" id="colStatus" data-column="9" />
-                                  <label className="form-check-label" htmlFor="colStatus">Status</label>
-                              </div>
-                              <div className="form-check check-primary mb-2">
-                                  <input className="form-check-input column-toggle" type="checkbox" id="colActions" data-column="10" />
-                                  <label className="form-check-label" htmlFor="colActions">Actions</label>
-                              </div>
-                          </div>
-                      </div>
-                      <a href="apps-customers-add.html" className="btn btn-primary"><i data-lucide="plus" className="size-4 me-1"></i>Add Customer</a>
+                  <div className="rounded-2 d-flex align-items-center justify-content-center flex-shrink-0"
+                    style={{width:38,height:38,background:k.bg}}>
+                    <i className={`${k.icon} fs-18`} style={{color:k.color}}/>
                   </div>
+                </div>
               </div>
-              <div className="card-body pt-0">
-                  <div className="table-card table-responsive">
-                      <table className="table table-borderless text-nowrap align-middle mb-0">
-                          <thead>
-                              <tr className="bg-light border-bottom">
-                                  <th>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" id="checAllCustomers" />
-                                      </div>
-                                  </th>
-                                  <th className="fw-medium text-muted">Customer ID</th>
-                                  <th className="fw-medium text-muted">Customer</th>
-                                  <th className="fw-medium text-muted">Phone</th>
-                                  <th className="fw-medium text-muted">City</th>
-                                  <th className="fw-medium text-muted">Orders</th>
-                                  <th className="fw-medium text-muted">Total Spend</th>
-                                  <th className="fw-medium text-muted">Customer Type</th>
-                                  <th className="fw-medium text-muted">Last Order</th>
-                                  <th className="fw-medium text-muted">Status</th>
-                                  <th className="fw-medium text-muted">Actions</th>
-                              </tr>
-                          </thead>
-                          <tbody>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary">
-                                          <input className="form-check-input" type="checkbox" />
-                                      </div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary fw-medium">#CUS1024</a></td>
-                                  <td>
-                                      <div className="d-flex align-items-center gap-2">
-                                          <img src="../assets/user-10-CzpspsdB.png" className="size-9 rounded img-fluid" alt="User" />
-                                          <div>
-                                              <a href="#" className="text-reset fw-medium d-block">Emma White</a>
-                                              <a href="mailto:emma@gotpos.com" className="link link-custom-primary fs-14">emma@gotpos.com</a>
-                                          </div>
-                                      </div>
-                                  </td>
-                                  <td>+1 987 654 3210</td>
-                                  <td>New York</td>
-                                  <td>18</td>
-                                  <td className="fw-medium">$1,240.50</td>
-                                  <td><span className="text-body-secondary border py-1 lh-base fw-medium px-3 rounded d-inline-flex align-items-center gap-2 fs-13"><span className="size-1-5 d-block bg-info rounded-circle"></span>VIP</span></td>
-                                  <td>Dec 19, 2025</td>
-                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Active</span></td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                          <button className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-edit-line"></i></button>
-                                          <button className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary fw-medium">#CUS1025</a></td>
-                                  <td>
-                                      <div className="d-flex align-items-center gap-2">
-                                          <img src="../assets/user-2-CroG7YJ0.png" className="size-9 rounded img-fluid" alt="User" />
-                                          <div>
-                                              <a href="#" className="text-reset fw-medium d-block">John Miller</a>
-                                              <a href="mailto:john@gotpos.com" className="link link-custom-primary fs-14">john@gotpos.com</a>
-                                          </div>
-                                      </div>
-                                  </td>
-                                  <td>+1 456 789 2210</td>
-                                  <td>Chicago</td>
-                                  <td>12</td>
-                                  <td className="fw-medium">$860.00</td>
-                                  <td><span className="text-body-secondary border py-1 px-3 rounded fs-13 d-inline-flex align-items-center gap-2"><span className="size-1-5 bg-primary rounded-circle"></span>Regular</span></td>
-                                  <td>Dec 15, 2025</td>
-                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Active</span></td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                          <button className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-edit-line"></i></button>
-                                          <button className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary fw-medium">#CUS1026</a></td>
-                                  <td>
-                                      <div className="d-flex align-items-center gap-2">
-                                          <img src="../assets/user-3-Bz6g7hsE.png" className="size-9 rounded img-fluid" alt="User" />
-                                          <div>
-                                              <a href="#" className="text-reset fw-medium d-block">Sophia Brown</a>
-                                              <a href="mailto:sophia@gotpos.com" className="link link-custom-primary fs-14">sophia@gotpos.com</a>
-                                          </div>
-                                      </div>
-                                  </td>
-                                  <td>+1 321 778 6654</td>
-                                  <td>Los Angeles</td>
-                                  <td>26</td>
-                                  <td className="fw-medium">$2,450.75</td>
-                                  <td><span className="text-body-secondary border py-1 px-3 rounded fs-13 d-inline-flex align-items-center gap-2"><span className="size-1-5 bg-info rounded-circle"></span>VIP</span></td>
-                                  <td>Dec 20, 2025</td>
-                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Active</span></td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                          <button className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-edit-line"></i></button>
-                                          <button className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary fw-medium">#CUS1027</a></td>
-                                  <td>
-                                      <div className="d-flex align-items-center gap-2">
-                                          <img src="../assets/user-4-7l52E1Lo.png" className="size-9 rounded img-fluid" alt="User" />
-                                          <div>
-                                              <a href="#" className="text-reset fw-medium d-block">Daniel Lee</a>
-                                              <a href="mailto:daniel@gotpos.com" className="link link-custom-primary fs-14">daniel@gotpos.com</a>
-                                          </div>
-                                      </div>
-                                  </td>
-                                  <td>+1 908 554 1102</td>
-                                  <td>Seattle</td>
-                                  <td>6</td>
-                                  <td className="fw-medium">$310.40</td>
-                                  <td><span className="text-body-secondary border py-1 px-3 rounded fs-13 d-inline-flex align-items-center gap-2"><span className="size-1-5 bg-secondary rounded-circle"></span>New</span></td>
-                                  <td>Dec 10, 2025</td>
-                                  <td><span className="badge bg-danger-subtle text-danger border border-danger-subtle">Inactive</span></td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                          <button className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-edit-line"></i></button>
-                                          <button className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary fw-medium">#CUS1025</a></td>
-                                  <td>
-                                      <div className="d-flex align-items-center gap-2">
-                                          <img src="../assets/user-11-bzS6tHsV.png" className="size-9 rounded img-fluid" alt="User" />
-                                          <div>
-                                              <a href="#" className="text-reset fw-medium d-block">John Carter</a>
-                                              <a href="mailto:john@gotpos.com" className="link link-custom-primary fs-14">john@gotpos.com</a>
-                                          </div>
-                                      </div>
-                                  </td>
-                                  <td>+1 456 789 3210</td>
-                                  <td>Chicago</td>
-                                  <td>12</td>
-                                  <td className="fw-medium">$980.00</td>
-                                  <td><span className="text-body-secondary border py-1 lh-base fw-medium px-3 rounded d-inline-flex align-items-center gap-2 fs-13"><span className="size-1-5 d-block bg-primary rounded-circle"></span>Regular</span></td>
-                                  <td>Dec 17, 2025</td>
-                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Active</span></td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                          <button className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-edit-line"></i></button>
-                                          <button className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary fw-medium">#CUS1026</a></td>
-                                  <td>
-                                      <div className="d-flex align-items-center gap-2">
-                                          <img src="../assets/user-12-CfsiEgBV.png" className="size-9 rounded img-fluid" alt="User" />
-                                          <div>
-                                              <a href="#" className="text-reset fw-medium d-block">Sophia Lee</a>
-                                              <a href="mailto:sophia@gotpos.com" className="link link-custom-primary fs-14">sophia@gotpos.com</a>
-                                          </div>
-                                      </div>
-                                  </td>
-                                  <td>+44 789 456 1230</td>
-                                  <td>London</td>
-                                  <td>25</td>
-                                  <td className="fw-medium">$2,430.75</td>
-                                  <td><span className="text-body-secondary border py-1 lh-base fw-medium px-3 rounded d-inline-flex align-items-center gap-2 fs-13"><span className="size-1-5 d-block bg-info rounded-circle"></span>VIP</span></td>
-                                  <td>Dec 18, 2025</td>
-                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Active</span></td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                          <button className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-edit-line"></i></button>
-                                          <button className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary fw-medium">#CUS1027</a></td>
-                                  <td>
-                                      <div className="d-flex align-items-center gap-2">
-                                          <img src="../assets/user-13-NgroKY8u.png" className="size-9 rounded img-fluid" alt="User" />
-                                          <div>
-                                              <a href="#" className="text-reset fw-medium d-block">Michael Brown</a>
-                                              <a href="mailto:michael@gotpos.com" className="link link-custom-primary fs-14">michael@gotpos.com</a>
-                                          </div>
-                                      </div>
-                                  </td>
-                                  <td>+91 98765 43210</td>
-                                  <td>Mumbai</td>
-                                  <td>9</td>
-                                  <td className="fw-medium">$540.20</td>
-                                  <td><span className="text-body-secondary border py-1 lh-base fw-medium px-3 rounded d-inline-flex align-items-center gap-2 fs-13"><span className="size-1-5 d-block bg-warning rounded-circle"></span>New</span></td>
-                                  <td>Dec 15, 2025</td>
-                                  <td><span className="badge bg-danger-subtle text-danger border border-danger-subtle">Inactive</span></td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                          <button className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-edit-line"></i></button>
-                                          <button className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary fw-medium">#CUS1028</a></td>
-                                  <td>
-                                      <div className="d-flex align-items-center gap-2">
-                                          <img src="../assets/user-14-BWimhkHc.png" className="size-9 rounded img-fluid" alt="User" />
-                                          <div>
-                                              <a href="#" className="text-reset fw-medium d-block">Emily Davis</a>
-                                              <a href="mailto:emily@gotpos.com" className="link link-custom-primary fs-14">emily@gotpos.com</a>
-                                          </div>
-                                      </div>
-                                  </td>
-                                  <td>+61 412 345 678</td>
-                                  <td>Sydney</td>
-                                  <td>31</td>
-                                  <td className="fw-medium">$3,120.00</td>
-                                  <td><span className="text-body-secondary border py-1 lh-base fw-medium px-3 rounded d-inline-flex align-items-center gap-2 fs-13"><span className="size-1-5 d-block bg-info rounded-circle"></span>VIP</span></td>
-                                  <td>Dec 20, 2025</td>
-                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Active</span></td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                          <button className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-edit-line"></i></button>
-                                          <button className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary fw-medium">#CUS1025</a></td>
-                                  <td>
-                                      <div className="d-flex align-items-center gap-2">
-                                          <img src="../assets/user-17-Y_OiPHJx.png" className="size-9 rounded img-fluid" alt="User" />
-                                          <div>
-                                              <a href="#" className="text-reset fw-medium d-block">John Carter</a>
-                                              <a href="mailto:john@gotpos.com" className="link link-custom-primary fs-14">john@gotpos.com</a>
-                                          </div>
-                                      </div>
-                                  </td>
-                                  <td>+1 555 210 3344</td>
-                                  <td>Chicago</td>
-                                  <td>12</td>
-                                  <td className="fw-medium">$860.00</td>
-                                  <td><span className="text-body-secondary border py-1 lh-base fw-medium px-3 rounded d-inline-flex align-items-center gap-2 fs-13"><span className="size-1-5 d-block bg-warning rounded-circle"></span>Regular</span></td>
-                                  <td>Dec 16, 2025</td>
-                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Active</span></td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                          <button className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-edit-line"></i></button>
-                                          <button className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                      </div>
-                                  </td>
-                              </tr>
-                              <tr>
-                                  <td>
-                                      <div className="form-check check-primary"><input className="form-check-input" type="checkbox" /></div>
-                                  </td>
-                                  <td><a href="#" className="link link-custom-primary fw-medium">#CUS1026</a></td>
-                                  <td>
-                                      <div className="d-flex align-items-center gap-2">
-                                          <img src="../assets/user-18-C5ehJukC.png" className="size-9 rounded img-fluid" alt="User" />
-                                          <div>
-                                              <a href="#" className="text-reset fw-medium d-block">Sophia Brown</a>
-                                              <a href="mailto:sophia@gotpos.com" className="link link-custom-primary fs-14">sophia@gotpos.com</a>
-                                          </div>
-                                      </div>
-                                  </td>
-                                  <td>+44 7700 900123</td>
-                                  <td>London</td>
-                                  <td>30</td>
-                                  <td className="fw-medium">$2,980.75</td>
-                                  <td><span className="text-body-secondary border py-1 lh-base fw-medium px-3 rounded d-inline-flex align-items-center gap-2 fs-13"><span className="size-1-5 d-block bg-info rounded-circle"></span>VIP</span></td>
-                                  <td>Dec 18, 2025</td>
-                                  <td><span className="badge bg-success-subtle text-success border border-success-subtle">Active</span></td>
-                                  <td>
-                                      <div className="d-flex gap-2">
-                                          <button className="btn btn-sub-primary size-8 btn-icon"><i className="ri-eye-line"></i></button>
-                                          <button className="btn btn-sub-secondary size-8 btn-icon"><i className="ri-edit-line"></i></button>
-                                          <button className="btn btn-sub-danger size-8 btn-icon" data-bs-toggle="modal" data-bs-target="#deleteModal"><i className="ri-delete-bin-line"></i></button>
-                                      </div>
-                                  </td>
-                              </tr>
-                          </tbody>
-                      </table>
-                  </div>
-                  <div className="row align-items-center g-3 mt-3">
-                      <div className="col-md-6">
-                          <p className="text-muted text-center text-md-start mb-0">Showing <b className="me-1">1-10</b> of <b className="ms-1">23</b> Results</p>
-                      </div>
-                      <div className="col-md-6">
-                          <nav aria-label="Page navigation example">
-                              <ul className="pagination justify-content-center justify-content-md-end mb-0 products-pagination">
-                                  <li className="page-item disabled"><a className="page-link" href="#"><i data-lucide="chevron-left" className="size-4"></i>Previous</a></li>
-                                  <li className="page-item active"><a className="page-link" href="#">1</a></li>
-                                  <li className="page-item"><a className="page-link" href="#">2</a></li>
-                                  <li className="page-item"><a className="page-link" href="#">3</a></li>
-                                  <li className="page-item"><a className="page-link" href="#">Next<i data-lucide="chevron-right" className="size-4"></i></a></li>
-                              </ul>
-                          </nav>
-                      </div>
-                  </div>
-              </div>
+            </div>
           </div>
+        ))}
+      </div>
 
+      {/* Tier tabs */}
+      <div className="d-flex gap-2 flex-wrap mb-3 align-items-center">
+        {['all','Platinum','Gold','Silver','Bronze'].map(t => {
+          const cfg = t !== 'all' ? TIER_CFG[t] : null
+          const count = t === 'all' ? customers.length : customers.filter(c=>c.tier===t).length
+          const isActive = filterTier === t
+          return (
+            <button key={t} onClick={()=>setTier(t)} className="btn btn-sm" style={{
+              fontSize:11,
+              background: isActive ? (cfg ? cfg.color : '#1e293b') : '#f8fafc',
+              color: isActive ? '#fff' : '#64748b',
+              border:`1px solid ${isActive ? 'transparent' : '#e2e8f0'}`,
+            }}>
+              {cfg && <i className={`${cfg.icon} me-1`}/>}
+              {t==='all' ? 'All Tiers' : t} ({count})
+            </button>
+          )
+        })}
+        <div className="ms-auto d-flex gap-2">
+          {['active','inactive'].map(s => (
+            <button key={s} onClick={()=>setSt(filterSt===s?'all':s)} className="btn btn-sm" style={{
+              fontSize:11,
+              background: filterSt===s ? STATUS_CFG[s].color : '#f8fafc',
+              color: filterSt===s ? '#fff' : '#64748b',
+              border:`1px solid ${filterSt===s ? 'transparent' : '#e2e8f0'}`,
+            }}>{s.charAt(0).toUpperCase()+s.slice(1)}</button>
+          ))}
+        </div>
+      </div>
 
-          <div className="modal fade" id="deleteModal" tabIndex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-              <div className="modal-dialog modal-dialog-centered modal-xs">
-                  <div className="modal-content p-7 text-center">
-                      <div className="d-flex justify-content-center mb-4">
-                          <div className="size-14 bg-danger-subtle rounded-circle d-flex align-items-center justify-content-center size-16">
-                              <i className="ri-delete-bin-line text-danger fs-2xl"></i>
-                          </div>
-                      </div>
-                      <h5 className="mb-4 lh-base">Are you sure you want to delete this Customer?</h5>
-                      <div className="d-flex justify-content-center align-items-center gap-2">
-                          <button type="button" className="btn btn-danger" data-bs-dismiss="modal">Delete</button>
-                          <button type="button" className="btn btn-link text-reset" data-bs-dismiss="modal">Cancel</button>
-                      </div>
-                  </div>
-              </div>
+      {/* Search */}
+      <div className="card border-0 shadow-sm mb-3">
+        <div className="card-body p-3">
+          <div className="input-group">
+            <span className="input-group-text bg-light border-end-0"><i className="ri-search-line text-muted"/></span>
+            <input type="text" className="form-control border-start-0 bg-light"
+              placeholder="Search by name, phone, email, area or ID…"
+              value={search} onChange={e=>setSearch(e.target.value)}/>
+            {search && (
+              <button className="btn btn-outline-secondary" onClick={()=>setSearch('')}>
+                <i className="ri-close-line"/>
+              </button>
+            )}
           </div>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="card border-0 shadow-sm">
+        <div className="card-header bg-white border-bottom d-flex align-items-center justify-content-between py-2">
+          <span style={{fontSize:13}}>
+            {filtered.length} customer{filtered.length!==1?'s':''}
+          </span>
+          <span className="text-muted" style={{fontSize:12}}>
+            Combined revenue: <strong>{fmt(filtered.reduce((s,c)=>s+c.totalSpent,0))}</strong>
+          </span>
+        </div>
+        <div className="table-responsive">
+          <table className="table table-hover align-middle mb-0" style={{fontSize:13}}>
+            <thead style={{background:'#f8fafc'}}>
+              <tr>
+                {['CUSTOMER','CONTACT','ZONE','TIER','ORDERS','TOTAL SPENT','POINTS','LAST ORDER','STATUS',''].map(h=>(
+                  <th key={h} className="px-3 py-2 fw-medium text-muted" style={{fontSize:11}}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length===0 && (
+                <tr>
+                  <td colSpan={10} className="text-center py-5 text-muted">
+                    <i className="ri-user-search-line d-block mb-2" style={{fontSize:28}}/>
+                    No customers match your search.
+                  </td>
+                </tr>
+              )}
+              {filtered.map((c,i) => {
+                const tc = TIER_CFG[c.tier]
+                const sc = STATUS_CFG[c.status]
+                const colorIdx = INIT_CUSTOMERS.findIndex(x=>x.id===c.id)
+                return (
+                  <tr key={c.id}>
+                    <td className="px-3 py-2">
+                      <div className="d-flex align-items-center gap-3">
+                        <div className="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white flex-shrink-0"
+                          style={{width:38,height:38,background:AVATAR_COLORS[colorIdx%AVATAR_COLORS.length],fontSize:13}}>
+                          {ini(c.name)}
+                        </div>
+                        <div>
+                          <Link to={`/customers/${c.id}`} style={{fontWeight:600,color:'#1e293b',textDecoration:'none'}}>
+                            {c.name}
+                          </Link>
+                          <div className="text-muted" style={{fontSize:10}}>{c.id} · Joined {c.joined}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2">
+                      <div style={{fontSize:12}}>{c.phone}</div>
+                      <div className="text-muted" style={{fontSize:11}}>{c.email}</div>
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="d-flex align-items-center gap-1" style={{fontSize:12}}>
+                        <i className="ri-map-pin-line text-muted" style={{fontSize:11}}/>
+                        {c.zone}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2">
+                      <span className="badge d-flex align-items-center gap-1"
+                        style={{fontSize:10,background:tc.bg,color:tc.color,border:`1px solid ${tc.border}`,width:'fit-content'}}>
+                        <i className={tc.icon}/>{c.tier}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 fw-semibold">{c.orders}</td>
+                    <td className="px-3 py-2 fw-medium">{fmt(c.totalSpent)}</td>
+                    <td className="px-3 py-2">
+                      <span style={{fontSize:12,color:'#8b5cf6',fontWeight:500}}>{fmtPts(c.points)}</span>
+                    </td>
+                    <td className="px-3 py-2 text-muted" style={{fontSize:12}}>{c.lastOrder}</td>
+                    <td className="px-3 py-2">
+                      <div className="d-flex align-items-center gap-2">
+                        <div className="form-check form-switch mb-0">
+                          <input className="form-check-input" type="checkbox" role="switch"
+                            checked={c.status==='active'} onChange={()=>toggleStatus(c)}
+                            style={{width:34,height:18,cursor:'pointer'}}/>
+                        </div>
+                        <span className="badge" style={{fontSize:10,background:sc.bg,color:sc.color,border:`1px solid ${sc.border}`}}>
+                          {sc.label}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="d-flex gap-1">
+                        <Link to={`/customers/${c.id}`}
+                          className="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center"
+                          style={{width:30,height:30,padding:0,borderRadius:'50%'}} title="View Profile">
+                          <i className="ri-eye-line" style={{fontSize:13}}/>
+                        </Link>
+                        <button
+                          className="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center"
+                          style={{width:30,height:30,padding:0,borderRadius:'50%'}} title="Remove"
+                          onClick={()=>{ setSelected(c); setModal('delete') }}>
+                          <i className="ri-delete-bin-line" style={{fontSize:13}}/>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* DELETE / REMOVE MODAL */}
+      {modal==='delete' && selected && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:1050,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}
+          onClick={closeModal}>
+          <div style={{background:'#fff',borderRadius:12,width:'100%',maxWidth:420,boxShadow:'0 20px 60px rgba(0,0,0,0.2)'}}
+            onClick={e=>e.stopPropagation()}>
+            <div style={{background:'#1e293b',borderRadius:'12px 12px 0 0',padding:'16px 20px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <span style={{color:'#fff',fontWeight:600,fontSize:15}}>Remove Customer</span>
+              <button className="btn-close btn-close-white btn-sm" onClick={closeModal}/>
+            </div>
+            <div className="p-4 text-center">
+              <div className="rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3"
+                style={{width:56,height:56,background:'#fef2f2'}}>
+                <i className="ri-user-unfollow-line" style={{color:'#ef4444',fontSize:24}}/>
+              </div>
+              <div className="fw-semibold mb-1" style={{fontSize:15}}>Remove {selected.name}?</div>
+              <div className="text-muted mb-1" style={{fontSize:13}}>
+                This will remove the customer from your system.
+              </div>
+              <div className="p-2 rounded mb-4" style={{background:'#fef2f2',border:'1px solid #fecaca'}}>
+                <div style={{fontSize:12,color:'#dc2626'}}>
+                  {selected.orders} orders · {fmt(selected.totalSpent)} revenue · {fmtPts(selected.points)} loyalty points will all be removed.
+                </div>
+              </div>
+              <div className="d-flex gap-2">
+                <button className="btn btn-outline-secondary flex-fill" onClick={closeModal}>Cancel</button>
+                <button className="btn btn-danger flex-fill" onClick={deleteCustomer}>Yes, Remove</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

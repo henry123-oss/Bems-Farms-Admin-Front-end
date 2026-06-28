@@ -1,707 +1,193 @@
-import { Link } from 'react-router-dom'
+import { useMemo } from 'react'
+
+const MOCK_VALUATION = [
+  { id:1,  product:'Basmati Rice (5kg)',  sku:'GRN-RIC-001', category:'Grains & Carbs', unit:'bag',    qty:120, cost:4800,  price:6500  },
+  { id:2,  product:'Fresh Tomatoes',      sku:'VEG-TOM-001', category:'Vegetables',     unit:'kg',     qty:8,   cost:800,   price:1200  },
+  { id:3,  product:'Palm Oil (25L)',       sku:'OIL-PLM-001', category:'Grains & Carbs', unit:'crate',  qty:0,   cost:18000, price:24000 },
+  { id:4,  product:'Catfish (Smoked)',    sku:'SEA-CAT-001', category:'Seafood',         unit:'kg',     qty:35,  cost:3200,  price:4500  },
+  { id:5,  product:'Fresh Pepper',        sku:'VEG-PEP-001', category:'Vegetables',     unit:'kg',     qty:6,   cost:700,   price:1100  },
+  { id:6,  product:'Chicken (Whole)',     sku:'MEA-CHK-001', category:'Meat',            unit:'kg',     qty:52,  cost:2800,  price:3800  },
+  { id:7,  product:'Fresh Yam (Tuber)',   sku:'GRN-YAM-001', category:'Grains & Carbs', unit:'tuber',  qty:90,  cost:1200,  price:1800  },
+  { id:8,  product:'Cassava Flour (2kg)', sku:'GRN-CAS-001', category:'Grains & Carbs', unit:'pack',   qty:14,  cost:1100,  price:1600  },
+  { id:9,  product:'Fresh Milk (1L)',     sku:'DAI-MLK-001', category:'Dairy & Eggs',   unit:'bottle', qty:40,  cost:900,   price:1400  },
+  { id:10, product:'Plantain (Bunch)',    sku:'FRM-PLT-001', category:'Fresh Farm',     unit:'bunch',  qty:25,  cost:1500,  price:2200  },
+]
 
 export default function StockValuation() {
+  const enriched = useMemo(() => MOCK_VALUATION.map(p => ({
+    ...p,
+    costValue:   p.qty * p.cost,
+    retailValue: p.qty * p.price,
+    profit:      p.qty * (p.price - p.cost),
+    margin:      p.cost > 0 ? Math.round(((p.price - p.cost) / p.price) * 100) : 0,
+  })), [])
+
+  const totals = useMemo(() => ({
+    costValue:   enriched.reduce((s,p) => s + p.costValue, 0),
+    retailValue: enriched.reduce((s,p) => s + p.retailValue, 0),
+    profit:      enriched.reduce((s,p) => s + p.profit, 0),
+    products:    enriched.length,
+  }), [enriched])
+
+  // Category breakdown
+  const byCategory = useMemo(() => {
+    const map = {}
+    enriched.forEach(p => {
+      if (!map[p.category]) map[p.category] = { category: p.category, costValue:0, retailValue:0, products:0, qty:0 }
+      map[p.category].costValue   += p.costValue
+      map[p.category].retailValue += p.retailValue
+      map[p.category].products    += 1
+      map[p.category].qty         += p.qty
+    })
+    return Object.values(map).sort((a,b) => b.retailValue - a.retailValue)
+  }, [enriched])
+
+  const CAT_COLORS = ['#405189','#0ab39c','#f7b84b','#f06548','#299cdb','#6559cc','#e83e8c']
+
   return (
     <div className="container-fluid">
-      <div className="gap-2 page-heading mb-3 flex-column flex-md-row">
-              <h6 className="flex-grow-1 mb-0">Valuation</h6>
-              <ul className="breadcrumb flex-shrink-0 mb-0">
-                  <li className="breadcrumb-item"><a href="#">Inventory</a></li>
-                  <li className="breadcrumb-item active">Valuation</li>
-              </ul>
-          </div>
-          <div className="card">
-              <div className="card-body">
-                  <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xxl-6 g-3">
-                      <div className="col">
-                          <div className="text-center border-end-md py-3">
-                              <h5 className="font-base">$245,800</h5>
-                              <p className="text-muted">Inventory Cost Value</p>
-                          </div>
-                      </div>
-                      <div className="col">
-                          <div className="text-center border-end-md py-3">
-                              <h5 className="font-base">$312,450</h5>
-                              <p className="text-muted">Retail Inventory Value</p>
-                          </div>
-                      </div>
-                      <div className="col">
-                          <div className="text-center border-end-md py-3">
-                              <h5 className="font-base">$66,650</h5>
-                              <p className="text-muted">Potential Profit</p>
-                          </div>
-                      </div>
-                      <div className="col">
-                          <div className="text-center border-end-md py-3">
-                              <h5 className="font-base">$28,400</h5>
-                              <p className="text-muted">Low Stock Value</p>
-                          </div>
-                      </div>
-                      <div className="col">
-                          <div className="text-center border-end-md py-3">
-                              <h5 className="font-base">$19,750</h5>
-                              <p className="text-muted">Dead Stock Value</p>
-                          </div>
-                      </div>
-                      <div className="col">
-                          <div className="text-center py-3">
-                              <h5 className="font-base">4.2x</h5>
-                              <p className="text-muted">Inventory Turnover</p>
-                          </div>
-                      </div>
+      <div className="gap-2 page-heading mb-3">
+        <h6 className="flex-grow-1 mb-0">Stock Valuation</h6>
+        <ul className="breadcrumb flex-shrink-0 mb-0">
+          <li className="breadcrumb-item"><a href="#">Inventory</a></li>
+          <li className="breadcrumb-item active">Valuation</li>
+        </ul>
+      </div>
+
+      {/* Summary cards */}
+      <div className="row g-3 mb-4">
+        {[
+          { label:'Cost Value (Stock)',   value:`₦${totals.costValue.toLocaleString()}`,   icon:'ri-price-tag-3-line',          color:'#405189', sub:'At purchase price' },
+          { label:'Retail Value (Stock)', value:`₦${totals.retailValue.toLocaleString()}`, icon:'ri-store-2-line',              color:'#0ab39c', sub:'At selling price'  },
+          { label:'Potential Profit',     value:`₦${totals.profit.toLocaleString()}`,      icon:'ri-line-chart-line',           color:'#299cdb', sub:'If all stock sold'  },
+          { label:'Avg Gross Margin',     value:`${Math.round((totals.profit / totals.retailValue) * 100)}%`, icon:'ri-percent-line', color:'#f7b84b', sub:'Across all products' },
+        ].map(c => (
+          <div className="col-6 col-xl-3" key={c.label}>
+            <div className="card mb-0" style={{ borderLeft:`3px solid ${c.color}` }}>
+              <div className="card-body py-3">
+                <div className="d-flex align-items-center gap-3 mb-1">
+                  <div className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                    style={{ width:40, height:40, background:`${c.color}1a` }}>
+                    <i className={`${c.icon} fs-18`} style={{ color:c.color }}></i>
                   </div>
-              </div>
-          </div>
-          <div className="card">
-              <div className="card-header">
-                  <div className="d-flex flex-wrap justify-content-between align-items-center gap-3">
-                      <div className="position-relative flex-shrink-0">
-                          <input type="text" id="lostItemSearch" className="form-control ps-9" placeholder="Search for lost items..." />
-                          <i data-lucide="search" className="size-4 icon-dark position-absolute top-50 start-0 ms-3 translate-middle-y"></i>
-                      </div>
-                      <div className="d-flex flex-wrap gap-2 align-items-center">
-                          <ul className="nav nav-pills nav-light border p-1 rounded-2" id="view-tab" role="tablist">
-                              <li className="nav-item" role="presentation">
-                                  <button className="nav-link py-1 px-2 active" id="grid-view-tab" data-bs-toggle="pill" data-bs-target="#grid-view" type="button" role="tab" aria-controls="grid-view" aria-selected="true">
-                                      <i className="ri-layout-grid-line"></i>
-                                  </button>
-                              </li>
-                              <li className="nav-item" role="presentation">
-                                  <button className="nav-link py-1 px-2" id="list-view-tab" data-bs-toggle="pill" data-bs-target="#list-view" type="button" role="tab" aria-controls="list-view" aria-selected="false">
-                                      <i className="ri-list-check"></i>
-                                  </button>
-                              </li>
-                          </ul>
-                          <div className="dropdown flex-shrink-0">
-                              <button className="btn border" type="button" data-bs-toggle="dropdown" aria-expanded="false"><i className="ri-filter-3-line me-1"></i> Filters</button>
-                              <div className="dropdown-menu dropdown-menu-end p-4 w-96">
-                                  <h6 className="mb-4">Filter Inventory</h6>
-                                  <form id="inventoryFilterForm">
-                                      <div className="mb-4">
-                                          <label className="form-label mb-2">Warehouse</label>
-                                          <div id="filterWarehouse"></div>
-                                      </div>
-                                      <div className="mb-4">
-                                          <label className="form-label mb-2">Inventory Status</label>
-                                          <div className="d-flex flex-wrap gap-3">
-                                              <div className="form-check">
-                                                  <input className="form-check-input" type="checkbox" id="statusInStock" />
-                                                  <label className="form-check-label" htmlFor="statusInStock">In Stock</label>
-                                              </div>
-                                              <div className="form-check">
-                                                  <input className="form-check-input" type="checkbox" id="statusLow" />
-                                                  <label className="form-check-label" htmlFor="statusLow">Low Stock</label>
-                                              </div>
-                                              <div className="form-check">
-                                                  <input className="form-check-input" type="checkbox" id="statusOut" />
-                                                  <label className="form-check-label" htmlFor="statusOut">Out of Stock</label>
-                                              </div>
-                                          </div>
-                                      </div>
-                                      <div className="mb-4">
-                                          <label className="form-label mb-2">Stock Level</label>
-                                          <div className="d-flex gap-3">
-                                              <div className="form-check">
-                                                  <input className="form-check-input" type="checkbox" id="stockHigh" />
-                                                  <label className="form-check-label" htmlFor="stockHigh">High</label>
-                                              </div>
-                                              <div className="form-check">
-                                                  <input className="form-check-input" type="checkbox" id="stockMedium" />
-                                                  <label className="form-check-label" htmlFor="stockMedium">Medium</label>
-                                              </div>
-                                              <div className="form-check">
-                                                  <input className="form-check-input" type="checkbox" id="stockLow" />
-                                                  <label className="form-check-label" htmlFor="stockLow">Low</label>
-                                              </div>
-                                          </div>
-                                      </div>
-                                      <div className="mb-4">
-                                          <label className="form-label mb-2">Stock Value Range</label>
-                                          <div id="slider"></div>
-                                      </div>
-                                      <div className="mb-4">
-                                          <label className="form-label mb-2">Last Updated</label>
-                                          <div id="lastUpdate"></div>
-                                      </div>
-
-                                      <div className="d-flex justify-content-end gap-2 pt-2">
-                                          <button type="reset" className="btn btn-light btn-sm">Reset</button>
-                                          <button type="submit" className="btn btn-primary btn-sm">Apply Filters</button>
-                                      </div>
-                                  </form>
-                              </div>
-                          </div>
-                          <button className="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addInventoryModal"><i className="ri-add-line me-1"></i> Add Valuation</button>
-                      </div>
+                  <div>
+                    <div className="fw-bold" style={{ fontSize:18, color:c.color }}>{c.value}</div>
+                    <div className="text-muted" style={{ fontSize:12 }}>{c.label}</div>
                   </div>
+                </div>
+                <div className="text-muted" style={{ fontSize:11, paddingLeft:52 }}>{c.sub}</div>
               </div>
-              <div className="card-body">
-                  <div className="tab-content" id="view-tabContent">
-                      <div className="tab-pane fade show active" id="grid-view" role="tabpanel" aria-labelledby="grid-view-tab" tabIndex="0">
-                          <div className="row">
-                              <div className="col-md-6 col-xl-4 col-xxl-3">
-                                  <div className="card">
-                                      <div className="d-flex flex-wrap gap-3 align-items-center border-bottom p-4">
-                                          <div className="avatar text-muted bg-light size-11 rounded fw-medium">CW</div>
-                                          <div className="flex-grow-1">
-                                              <h6 className="mb-0">Central Warehouse</h6>
-                                              <p className="text-muted">Warehouse ID: CW-001</p>
-                                          </div>
-                                          <span className="badge bg-success-subtle text-success border border-success-subtle">Open</span>
-                                      </div>
-                                      <div className="px-4 py-6">
-                                          <div className="row g-5">
-                                              <div className="col-6">
-                                                  <p className="text-muted mb-1">Low Stock:</p>
-                                                  <p className="fw-medium">18 Items</p>
-                                              </div>
-                                              <div className="col-6">
-                                                  <p className="text-muted mb-1">Out of Stock:</p>
-                                                  <p className="fw-medium">6 Items</p>
-                                              </div>
-                                              <div className="col-6">
-                                                  <p className="text-muted mb-1">Last Updated:</p>
-                                                  <p className="fw-medium">Today</p>
-                                              </div>
-                                              <div className="col-6">
-                                                  <p className="text-muted mb-1">Stock Value:</p>
-                                                  <p className="fw-medium">₹42.6L</p>
-                                              </div>
-                                          </div>
-                                      </div>
-                                      <div className="d-flex flex-wrap flex-md-nowrap gap-2 bg-light bg-opacity-50 p-4">
-                                          <button type="button" className="btn bg-body-secondary border w-100"><i className="ri-eye-line me-1"></i> View</button>
-                                          <button type="button" className="btn btn-primary w-100"><i className="ri-edit-line me-1"></i> Manage</button>
-                                      </div>
-                                  </div>
-                              </div>
-                              <div className="col-md-6 col-xl-4 col-xxl-3">
-                                  <div className="card">
-                                      <div className="d-flex flex-wrap gap-3 align-items-center border-bottom p-4">
-                                          <div className="avatar text-muted bg-light size-11 rounded fw-medium">NW</div>
-                                          <div className="flex-grow-1">
-                                              <h6 className="mb-0">North Warehouse</h6>
-                                              <p className="text-muted">Warehouse ID: NW-002</p>
-                                          </div>
-                                          <span className="badge bg-success-subtle text-success border border-success-subtle">Open</span>
-                                      </div>
-                                      <div className="px-4 py-6">
-                                          <div className="row g-5">
-                                              <div className="col-6">
-                                                  <p className="text-muted mb-1">Low Stock:</p>
-                                                  <p className="fw-medium">12 Items</p>
-                                              </div>
-                                              <div className="col-6">
-                                                  <p className="text-muted mb-1">Out of Stock:</p>
-                                                  <p className="fw-medium">4 Items</p>
-                                              </div>
-                                              <div className="col-6">
-                                                  <p className="text-muted mb-1">Last Updated:</p>
-                                                  <p className="fw-medium">Today</p>
-                                              </div>
-                                              <div className="col-6">
-                                                  <p className="text-muted mb-1">Stock Value:</p>
-                                                  <p className="fw-medium">₹31.2L</p>
-                                              </div>
-                                          </div>
-                                      </div>
-                                      <div className="d-flex flex-wrap flex-md-nowrap gap-2 bg-light bg-opacity-50 p-4">
-                                          <button type="button" className="btn bg-body-secondary border w-100"><i className="ri-eye-line me-1"></i> View</button>
-                                          <button type="button" className="btn btn-primary w-100"><i className="ri-edit-line me-1"></i> Manage</button>
-                                      </div>
-                                  </div>
-                              </div>
-                              <div className="col-md-6 col-xl-4 col-xxl-3">
-                                  <div className="card">
-                                      <div className="d-flex flex-wrap gap-3 align-items-center border-bottom p-4">
-                                          <div className="avatar text-muted bg-light size-11 rounded fw-medium">SW</div>
-                                          <div className="flex-grow-1">
-                                              <h6 className="mb-0">South Warehouse</h6>
-                                              <p className="text-muted">Warehouse ID: SW-003</p>
-                                          </div>
-                                          <span className="badge bg-secondary-subtle text-secondary border border-secondary-subtle">At Risk</span>
-                                      </div>
-                                      <div className="px-4 py-6">
-                                          <div className="row g-5">
-                                              <div className="col-6">
-                                                  <p className="text-muted mb-1">Low Stock:</p>
-                                                  <p className="fw-medium">26 Items</p>
-                                              </div>
-                                              <div className="col-6">
-                                                  <p className="text-muted mb-1">Out of Stock:</p>
-                                                  <p className="fw-medium">11 Items</p>
-                                              </div>
-                                              <div className="col-6">
-                                                  <p className="text-muted mb-1">Last Updated:</p>
-                                                  <p className="fw-medium">Yesterday</p>
-                                              </div>
-                                              <div className="col-6">
-                                                  <p className="text-muted mb-1">Stock Value:</p>
-                                                  <p className="fw-medium">₹24.8L</p>
-                                              </div>
-                                          </div>
-                                      </div>
-                                      <div className="d-flex flex-wrap flex-md-nowrap gap-2 bg-light bg-opacity-50 p-4">
-                                          <button type="button" className="btn bg-body-secondary border w-100"><i className="ri-eye-line me-1"></i> View</button>
-                                          <button type="button" className="btn btn-primary w-100"><i className="ri-edit-line me-1"></i> Manage</button>
-                                      </div>
-                                  </div>
-                              </div>
-                              <div className="col-md-6 col-xl-4 col-xxl-3">
-                                  <div className="card">
-                                      <div className="d-flex flex-wrap gap-3 align-items-center border-bottom p-4">
-                                          <div className="avatar text-muted bg-light size-11 rounded fw-medium">EW</div>
-                                          <div className="flex-grow-1">
-                                              <h6 className="mb-0">East Warehouse</h6>
-                                              <p className="text-muted">Warehouse ID: EW-004</p>
-                                          </div>
-                                          <span className="badge bg-success-subtle text-success border border-success-subtle">Open</span>
-                                      </div>
-                                      <div className="px-4 py-6">
-                                          <div className="row g-5">
-                                              <div className="col-6">
-                                                  <p className="text-muted mb-1">Low Stock:</p>
-                                                  <p className="fw-medium">9 Items</p>
-                                              </div>
-                                              <div className="col-6">
-                                                  <p className="text-muted mb-1">Out of Stock:</p>
-                                                  <p className="fw-medium">2 Items</p>
-                                              </div>
-                                              <div className="col-6">
-                                                  <p className="text-muted mb-1">Last Updated:</p>
-                                                  <p className="fw-medium">Today</p>
-                                              </div>
-                                              <div className="col-6">
-                                                  <p className="text-muted mb-1">Stock Value:</p>
-                                                  <p className="fw-medium">₹38.5L</p>
-                                              </div>
-                                          </div>
-                                      </div>
-                                      <div className="d-flex flex-wrap flex-md-nowrap gap-2 bg-light bg-opacity-50 p-4">
-                                          <button type="button" className="btn bg-body-secondary border w-100"><i className="ri-eye-line me-1"></i> View</button>
-                                          <button type="button" className="btn btn-primary w-100"><i className="ri-edit-line me-1"></i> Manage</button>
-                                      </div>
-                                  </div>
-                              </div>
-                              <div className="col-md-6 col-xl-4 col-xxl-3">
-                                  <div className="card">
-                                      <div className="d-flex flex-wrap gap-3 align-items-center border-bottom p-4">
-                                          <div className="avatar text-muted bg-light size-11 rounded fw-medium">WW</div>
-                                          <div className="flex-grow-1">
-                                              <h6 className="mb-0">West Warehouse</h6>
-                                              <p className="text-muted">Warehouse ID: WW-005</p>
-                                          </div>
-                                          <span className="badge bg-danger-subtle text-danger border border-danger-subtle">Critical</span>
-                                      </div>
-                                      <div className="px-4 py-6">
-                                          <div className="row g-5">
-                                              <div className="col-6">
-                                                  <p className="text-muted mb-1">Low Stock:</p>
-                                                  <p className="fw-medium">34 Items</p>
-                                              </div>
-                                              <div className="col-6">
-                                                  <p className="text-muted mb-1">Out of Stock:</p>
-                                                  <p className="fw-medium">18 Items</p>
-                                              </div>
-                                              <div className="col-6">
-                                                  <p className="text-muted mb-1">Last Updated:</p>
-                                                  <p className="fw-medium">2 Days Ago</p>
-                                              </div>
-                                              <div className="col-6">
-                                                  <p className="text-muted mb-1">Stock Value:</p>
-                                                  <p className="fw-medium">₹19.4L</p>
-                                              </div>
-                                          </div>
-                                      </div>
-                                      <div className="d-flex flex-wrap flex-md-nowrap gap-2 bg-light bg-opacity-50 p-4">
-                                          <button type="button" className="btn bg-body-secondary border w-100"><i className="ri-eye-line me-1"></i> View</button>
-                                          <button type="button" className="btn btn-primary w-100"><i className="ri-edit-line me-1"></i> Manage</button>
-                                      </div>
-                                  </div>
-                              </div>
-                              <div className="col-md-6 col-xl-4 col-xxl-3">
-                                  <div className="card">
-                                      <div className="d-flex flex-wrap gap-3 align-items-center border-bottom p-4">
-                                          <div className="avatar text-muted bg-light size-11 rounded fw-medium">RW</div>
-                                          <div className="flex-grow-1">
-                                              <h6 className="mb-0">Regional Warehouse</h6>
-                                              <p className="text-muted">Warehouse ID: RW-006</p>
-                                          </div>
-                                          <span className="badge bg-success-subtle text-success border border-success-subtle">Open</span>
-                                      </div>
-                                      <div className="px-4 py-6">
-                                          <div className="row g-5">
-                                              <div className="col-6">
-                                                  <p className="text-muted mb-1">Low Stock:</p>
-                                                  <p className="fw-medium">7 Items</p>
-                                              </div>
-                                              <div className="col-6">
-                                                  <p className="text-muted mb-1">Out of Stock:</p>
-                                                  <p className="fw-medium">1 Item</p>
-                                              </div>
-                                              <div className="col-6">
-                                                  <p className="text-muted mb-1">Last Updated:</p>
-                                                  <p className="fw-medium">Today</p>
-                                              </div>
-                                              <div className="col-6">
-                                                  <p className="text-muted mb-1">Stock Value:</p>
-                                                  <p className="fw-medium">₹46.9L</p>
-                                              </div>
-                                          </div>
-                                      </div>
-                                      <div className="d-flex flex-wrap flex-md-nowrap gap-2 bg-light bg-opacity-50 p-4">
-                                          <button type="button" className="btn bg-body-secondary border w-100"><i className="ri-eye-line me-1"></i> View</button>
-                                          <button type="button" className="btn btn-primary w-100"><i className="ri-edit-line me-1"></i> Manage</button>
-                                      </div>
-                                  </div>
-                              </div>
-                              <div className="col-md-6 col-xl-4 col-xxl-3">
-                                  <div className="card">
-                                      <div className="d-flex flex-wrap gap-3 align-items-center border-bottom p-4">
-                                          <div className="avatar text-muted bg-light size-11 rounded fw-medium">BW</div>
-                                          <div className="flex-grow-1">
-                                              <h6 className="mb-0">Backup Warehouse</h6>
-                                              <p className="text-muted">Warehouse ID: BW-007</p>
-                                          </div>
-                                          <span className="badge bg-danger-subtle text-danger border border-danger-subtle">Critical</span>
-                                      </div>
-                                      <div className="px-4 py-6">
-                                          <div className="row g-5">
-                                              <div className="col-6">
-                                                  <p className="text-muted mb-1">Low Stock:</p>
-                                                  <p className="fw-medium">3 Items</p>
-                                              </div>
-                                              <div className="col-6">
-                                                  <p className="text-muted mb-1">Out of Stock:</p>
-                                                  <p className="fw-medium">0 Items</p>
-                                              </div>
-                                              <div className="col-6">
-                                                  <p className="text-muted mb-1">Last Updated:</p>
-                                                  <p className="fw-medium">Today</p>
-                                              </div>
-                                              <div className="col-6">
-                                                  <p className="text-muted mb-1">Stock Value:</p>
-                                                  <p className="fw-medium">₹12.8L</p>
-                                              </div>
-                                          </div>
-                                      </div>
-                                      <div className="d-flex flex-wrap flex-md-nowrap gap-2 bg-light bg-opacity-50 p-4">
-                                          <button type="button" className="btn bg-body-secondary border w-100"><i className="ri-eye-line me-1"></i> View</button>
-                                          <button type="button" className="btn btn-primary w-100"><i className="ri-edit-line me-1"></i> Manage</button>
-                                      </div>
-                                  </div>
-                              </div>
-                              <div className="col-md-6 col-xl-4 col-xxl-3">
-                                  <div className="card">
-                                      <div className="d-flex flex-wrap gap-3 align-items-center border-bottom p-4">
-                                          <div className="avatar text-muted bg-light size-11 rounded fw-medium">TW</div>
-                                          <div className="flex-grow-1">
-                                              <h6 className="mb-0">Transit Warehouse</h6>
-                                              <p className="text-muted">Warehouse ID: TW-008</p>
-                                          </div>
-                                          <span className="badge bg-secondary-subtle text-secondary border border-secondary-subtle">At Risk</span>
-                                      </div>
-                                      <div className="px-4 py-6">
-                                          <div className="row g-5">
-                                              <div className="col-6">
-                                                  <p className="text-muted mb-1">Low Stock:</p>
-                                                  <p className="fw-medium">22 Items</p>
-                                              </div>
-                                              <div className="col-6">
-                                                  <p className="text-muted mb-1">Out of Stock:</p>
-                                                  <p className="fw-medium">9 Items</p>
-                                              </div>
-                                              <div className="col-6">
-                                                  <p className="text-muted mb-1">Last Updated:</p>
-                                                  <p className="fw-medium">Yesterday</p>
-                                              </div>
-                                              <div className="col-6">
-                                                  <p className="text-muted mb-1">Stock Value:</p>
-                                                  <p className="fw-medium">₹27.3L</p>
-                                              </div>
-                                          </div>
-                                      </div>
-                                      <div className="d-flex flex-wrap flex-md-nowrap gap-2 bg-light bg-opacity-50 p-4">
-                                          <button type="button" className="btn bg-body-secondary border w-100"><i className="ri-eye-line me-1"></i> View</button>
-                                          <button type="button" className="btn btn-primary w-100"><i className="ri-edit-line me-1"></i> Manage</button>
-                                      </div>
-                                  </div>
-                              </div>
-                          </div>
-                          <div className="row align-items-center g-3 mt-3">
-                              <div className="col-md-6">
-                                  <p className="text-muted text-center text-md-start mb-0">Showing <b className="me-1">1-8</b> of <b className="ms-1">27</b> Results</p>
-                              </div>
-                              <div className="col-md-6">
-                                  <nav aria-label="Page navigation example">
-                                      <ul className="pagination justify-content-center justify-content-md-end mb-0 products-pagination">
-                                          <li className="page-item disabled"><a className="page-link" href="#"><i data-lucide="chevron-left" className="size-4"></i>Previous</a></li>
-                                          <li className="page-item active"><a className="page-link" href="#">1</a></li>
-                                          <li className="page-item"><a className="page-link" href="#">2</a></li>
-                                          <li className="page-item"><a className="page-link" href="#">3</a></li>
-                                          <li className="page-item"><a className="page-link" href="#">Next<i data-lucide="chevron-right" className="size-4"></i></a></li>
-                                      </ul>
-                                  </nav>
-                              </div>
-                          </div>
-                      </div>
-                      <div className="tab-pane fade" id="list-view" role="tabpanel" aria-labelledby="list-view-tab" tabIndex="0">
-                          <div className="table-responsive">
-                              <table className="table table-borderless align-middle text-nowrap">
-                                  <thead>
-                                      <tr className="bg-light border-bottom">
-                                          <th className="text-muted fw-medium">Warehouse</th>
-                                          <th className="text-muted fw-medium">Warehouse ID</th>
-                                          <th className="text-muted fw-medium">Status</th>
-                                          <th className="text-muted fw-medium">Low Stock</th>
-                                          <th className="text-muted fw-medium">Out of Stock</th>
-                                          <th className="text-muted fw-medium">Last Updated</th>
-                                          <th className="text-muted fw-medium">Stock Value</th>
-                                          <th className="text-muted fw-medium">Actions</th>
-                                      </tr>
-                                  </thead>
-                                  <tbody>
-                                      <tr>
-                                          <td>
-                                              <div className="d-flex align-items-center gap-2">
-                                                  <div className="avatar text-muted bg-light size-11 rounded fw-medium">CW</div>
-                                                  <h6 className="mb-0">Central Warehouse</h6>
-                                              </div>
-                                          </td>
-                                          <td>CW-001</td>
-                                          <td><span className="badge bg-success-subtle text-success border border-success-subtle">Open</span></td>
-                                          <td>18 Items</td>
-                                          <td>6 Items</td>
-                                          <td>Today</td>
-                                          <td>₹42.6L</td>
-                                          <td>
-                                              <div className="d-flex align-items-center gap-1">
-                                                  <button type="button" className="btn btn-icon size-8 btn-light me-1"><i className="ri-eye-line"></i></button>
-                                                  <button type="button" className="btn btn-icon size-8 btn-sub-primary"><i className="ri-edit-line"></i></button>
-                                              </div>
-                                          </td>
-                                      </tr>
-
-                                      <tr>
-                                          <td>
-                                              <div className="d-flex align-items-center gap-2">
-                                                  <div className="avatar text-muted bg-light size-11 rounded fw-medium">NW</div>
-                                                  <h6 className="mb-0">North Warehouse</h6>
-                                              </div>
-                                          </td>
-                                          <td>NW-002</td>
-                                          <td><span className="badge bg-success-subtle text-success border border-success-subtle">Open</span></td>
-                                          <td>12 Items</td>
-                                          <td>4 Items</td>
-                                          <td>Today</td>
-                                          <td>₹31.2L</td>
-                                          <td>
-                                              <div className="d-flex align-items-center gap-1">
-                                                  <button type="button" className="btn btn-icon size-8 btn-light me-1"><i className="ri-eye-line"></i></button>
-                                                  <button type="button" className="btn btn-icon size-8 btn-sub-primary"><i className="ri-edit-line"></i></button>
-                                              </div>
-                                          </td>
-                                      </tr>
-
-                                      <tr>
-                                          <td>
-                                              <div className="d-flex align-items-center gap-2">
-                                                  <div className="avatar text-muted bg-light size-11 rounded fw-medium">SW</div>
-                                                  <h6 className="mb-0">South Warehouse</h6>
-                                              </div>
-                                          </td>
-                                          <td>SW-003</td>
-                                          <td><span className="badge bg-secondary-subtle text-secondary border border-secondary-subtle">At Risk</span></td>
-                                          <td>26 Items</td>
-                                          <td>11 Items</td>
-                                          <td>Yesterday</td>
-                                          <td>₹24.8L</td>
-                                          <td>
-                                              <div className="d-flex align-items-center gap-1">
-                                                  <button type="button" className="btn btn-icon size-8 btn-light me-1"><i className="ri-eye-line"></i></button>
-                                                  <button type="button" className="btn btn-icon size-8 btn-sub-primary"><i className="ri-edit-line"></i></button>
-                                              </div>
-                                          </td>
-                                      </tr>
-
-                                      <tr>
-                                          <td>
-                                              <div className="d-flex align-items-center gap-2">
-                                                  <div className="avatar text-muted bg-light size-11 rounded fw-medium">EW</div>
-                                                  <h6 className="mb-0">East Warehouse</h6>
-                                              </div>
-                                          </td>
-                                          <td>EW-004</td>
-                                          <td><span className="badge bg-success-subtle text-success border border-success-subtle">Open</span></td>
-                                          <td>9 Items</td>
-                                          <td>2 Items</td>
-                                          <td>Today</td>
-                                          <td>₹38.5L</td>
-                                          <td>
-                                              <div className="d-flex align-items-center gap-1">
-                                                  <button type="button" className="btn btn-icon size-8 btn-light me-1"><i className="ri-eye-line"></i></button>
-                                                  <button type="button" className="btn btn-icon size-8 btn-sub-primary"><i className="ri-edit-line"></i></button>
-                                              </div>
-                                          </td>
-                                      </tr>
-
-                                      <tr>
-                                          <td>
-                                              <div className="d-flex align-items-center gap-2">
-                                                  <div className="avatar text-muted bg-light size-11 rounded fw-medium">WW</div>
-                                                  <h6 className="mb-0">West Warehouse</h6>
-                                              </div>
-                                          </td>
-                                          <td>WW-005</td>
-                                          <td><span className="badge bg-danger-subtle text-danger border border-danger-subtle">Critical</span></td>
-                                          <td>34 Items</td>
-                                          <td>18 Items</td>
-                                          <td>2 Days Ago</td>
-                                          <td>₹19.4L</td>
-                                          <td>
-                                              <div className="d-flex align-items-center gap-1">
-                                                  <button type="button" className="btn btn-icon size-8 btn-light me-1"><i className="ri-eye-line"></i></button>
-                                                  <button type="button" className="btn btn-icon size-8 btn-sub-primary"><i className="ri-edit-line"></i></button>
-                                              </div>
-                                          </td>
-                                      </tr>
-
-                                      <tr>
-                                          <td>
-                                              <div className="d-flex align-items-center gap-2">
-                                                  <div className="avatar text-muted bg-light size-11 rounded fw-medium">RW</div>
-                                                  <h6 className="mb-0">Regional Warehouse</h6>
-                                              </div>
-                                          </td>
-                                          <td>RW-006</td>
-                                          <td><span className="badge bg-success-subtle text-success border border-success-subtle">Open</span></td>
-                                          <td>7 Items</td>
-                                          <td>1 Item</td>
-                                          <td>Today</td>
-                                          <td>₹46.9L</td>
-                                          <td>
-                                              <div className="d-flex align-items-center gap-1">
-                                                  <button type="button" className="btn btn-icon size-8 btn-light me-1"><i className="ri-eye-line"></i></button>
-                                                  <button type="button" className="btn btn-icon size-8 btn-sub-primary"><i className="ri-edit-line"></i></button>
-                                              </div>
-                                          </td>
-                                      </tr>
-
-                                      <tr>
-                                          <td>
-                                              <div className="d-flex align-items-center gap-2">
-                                                  <div className="avatar text-muted bg-light size-11 rounded fw-medium">BW</div>
-                                                  <h6 className="mb-0">Backup Warehouse</h6>
-                                              </div>
-                                          </td>
-                                          <td>BW-007</td>
-                                          <td><span className="badge bg-danger-subtle text-danger border border-danger-subtle">Critical</span></td>
-                                          <td>3 Items</td>
-                                          <td>0 Items</td>
-                                          <td>Today</td>
-                                          <td>₹12.8L</td>
-                                          <td>
-                                              <div className="d-flex align-items-center gap-1">
-                                                  <button type="button" className="btn btn-icon size-8 btn-light me-1"><i className="ri-eye-line"></i></button>
-                                                  <button type="button" className="btn btn-icon size-8 btn-sub-primary"><i className="ri-edit-line"></i></button>
-                                              </div>
-                                          </td>
-                                      </tr>
-                                      <tr>
-                                          <td>
-                                              <div className="d-flex align-items-center gap-2">
-                                                  <div className="avatar text-muted bg-light size-11 rounded fw-medium">TW</div>
-                                                  <h6 className="mb-0">Transit Warehouse</h6>
-                                              </div>
-                                          </td>
-                                          <td>TW-008</td>
-                                          <td><span className="badge bg-secondary-subtle text-secondary border border-secondary-subtle">At Risk</span></td>
-                                          <td>22 Items</td>
-                                          <td>9 Items</td>
-                                          <td>Yesterday</td>
-                                          <td>₹27.3L</td>
-                                          <td>
-                                              <div className="d-flex align-items-center gap-1">
-                                                  <button type="button" className="btn btn-icon size-8 btn-light me-1"><i className="ri-eye-line"></i></button>
-                                                  <button type="button" className="btn btn-icon size-8 btn-sub-primary"><i className="ri-edit-line"></i></button>
-                                              </div>
-                                          </td>
-                                      </tr>
-                                  </tbody>
-                              </table>
-                          </div>
-                          <div className="row align-items-center g-3">
-                              <div className="col-md-6">
-                                  <p className="text-muted text-center text-md-start mb-0">Showing <b className="me-1">1-8</b> of <b className="ms-1">27</b> Results</p>
-                              </div>
-                              <div className="col-md-6">
-                                  <nav aria-label="Page navigation example">
-                                      <ul className="pagination justify-content-center justify-content-md-end mb-0 products-pagination">
-                                          <li className="page-item disabled"><a className="page-link" href="#"><i data-lucide="chevron-left" className="size-4"></i>Previous</a></li>
-                                          <li className="page-item active"><a className="page-link" href="#">1</a></li>
-                                          <li className="page-item"><a className="page-link" href="#">2</a></li>
-                                          <li className="page-item"><a className="page-link" href="#">3</a></li>
-                                          <li className="page-item"><a className="page-link" href="#">Next<i data-lucide="chevron-right" className="size-4"></i></a></li>
-                                      </ul>
-                                  </nav>
-                              </div>
-                          </div>
-                      </div>
-                  </div>
-              </div>
+            </div>
           </div>
+        ))}
+      </div>
 
-          <div className="modal fade" id="addInventoryModal" tabIndex="-1" aria-labelledby="addInventoryModalLabel" aria-hidden="true">
-              <div className="modal-dialog modal-dialog-centered">
-                  <div className="modal-content">
-                      <div className="modal-header">
-                          <h6 className="modal-title" id="addInventoryModalLabel">Add Valuation</h6>
-                          <button type="button" className="btn-close" data-bs-dismiss="modal"></button>
-                      </div>
-                      <div className="modal-body">
-                          <form id="inventoryValuationForm">
-                              <input type="hidden" id="inventoryValuationId" />
-                              <div className="row g-3">
-                                  <div className="col-12">
-                                      <label htmlFor="productName" className="form-label">
-                                          Product Name <span className="text-danger">*</span>
-                                      </label>
-                                      <input type="text" className="form-control" id="productName" placeholder="Blouse Top" required />
-                                  </div>
-                                  <div className="col-md-6">
-                                      <label htmlFor="productSku" className="form-label">SKU <span className="text-danger">*</span></label>
-                                      <input type="text" className="form-control" id="productSku" placeholder="BLC-500" required />
-                                  </div>
-                                  <div className="col-md-6">
-                                      <label htmlFor="stockQuantity" className="form-label">Stock Quantity <span className="text-danger">*</span></label>
-                                      <input type="number" className="form-control" id="stockQuantity" placeholder="10" required />
-                                  </div>
-                                  <div className="col-12">
-                                      <label htmlFor="warehouseSelect" className="form-label">Warehouse <span className="text-danger">*</span></label>
-                                      <div id="warehouseSelect"></div>
-                                  </div>
-                                  <div className="col-md-6">
-                                      <label htmlFor="supplierSelect" className="form-label">Supplier</label>
-                                      <div id="supplierSelect"></div>
-                                  </div>
-                                  <div className="col-md-6">
-                                      <label htmlFor="inventoryStatusSelect" className="form-label">Inventory Status</label>
-                                      <div id="inventoryStatusSelect"></div>
-                                  </div>
-                                  <div className="col-12">
-                                      <label htmlFor="inventoryNotes" className="form-label">Valuation Notes</label>
-                                      <textarea className="form-control" id="inventoryNotes" rows="3" placeholder="Remarks related to inventory valuation"></textarea>
-                                  </div>
-                              </div>
-                              <div className="d-flex gap-2 mt-7">
-                                  <button type="button" className="btn btn-light w-100" data-bs-dismiss="modal">Cancel</button>
-                                  <button type="submit" className="btn btn-primary w-100" id="saveValuationBtn">Save Valuation</button>
-                              </div>
-                          </form>
-                      </div>
-                  </div>
-              </div>
+      {/* Category breakdown */}
+      <div className="card mb-4">
+        <div className="card-header">
+          <h6 className="mb-0 fw-semibold">Valuation by Category</h6>
+        </div>
+        <div className="card-body pt-0">
+          <div className="table-responsive">
+            <table className="table align-middle mb-0">
+              <thead>
+                <tr className="bg-light border-bottom">
+                  <th className="fw-medium text-muted">Category</th>
+                  <th className="fw-medium text-muted">Products</th>
+                  <th className="fw-medium text-muted">Total Qty</th>
+                  <th className="fw-medium text-muted">Cost Value</th>
+                  <th className="fw-medium text-muted">Retail Value</th>
+                  <th className="fw-medium text-muted">% of Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {byCategory.map((c, i) => {
+                  const pct = Math.round((c.retailValue / totals.retailValue) * 100)
+                  return (
+                    <tr key={c.category}>
+                      <td>
+                        <div className="d-flex align-items-center gap-2">
+                          <div style={{ width:10, height:10, borderRadius:'50%', background: CAT_COLORS[i % CAT_COLORS.length] }}></div>
+                          <span className="fw-medium">{c.category}</span>
+                        </div>
+                      </td>
+                      <td>{c.products}</td>
+                      <td>{c.qty}</td>
+                      <td>₦{c.costValue.toLocaleString()}</td>
+                      <td className="fw-medium">₦{c.retailValue.toLocaleString()}</td>
+                      <td style={{ minWidth:140 }}>
+                        <div className="d-flex align-items-center gap-2">
+                          <div className="progress flex-grow-1" style={{ height:6 }}>
+                            <div className="progress-bar" style={{ width:`${pct}%`, background: CAT_COLORS[i % CAT_COLORS.length] }}></div>
+                          </div>
+                          <span style={{ fontSize:12, minWidth:32 }}>{pct}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
+        </div>
+      </div>
+
+      {/* Full product valuation table */}
+      <div className="card">
+        <div className="card-header d-flex justify-content-between align-items-center">
+          <h6 className="mb-0 fw-semibold">Product-Level Valuation</h6>
+          <span className="badge bg-light text-dark border">{enriched.length} products</span>
+        </div>
+        <div className="card-body pt-0">
+          <div className="table-responsive">
+            <table className="table align-middle text-nowrap mb-0">
+              <thead>
+                <tr className="bg-light border-bottom">
+                  <th className="fw-medium text-muted">Product</th>
+                  <th className="fw-medium text-muted">SKU</th>
+                  <th className="fw-medium text-muted">Category</th>
+                  <th className="fw-medium text-muted">Qty</th>
+                  <th className="fw-medium text-muted">Unit Cost</th>
+                  <th className="fw-medium text-muted">Sell Price</th>
+                  <th className="fw-medium text-muted">Cost Value</th>
+                  <th className="fw-medium text-muted">Retail Value</th>
+                  <th className="fw-medium text-muted">Potential Profit</th>
+                  <th className="fw-medium text-muted">Margin</th>
+                </tr>
+              </thead>
+              <tbody>
+                {enriched.map(p => (
+                  <tr key={p.id} style={{ opacity: p.qty === 0 ? 0.5 : 1 }}>
+                    <td className="fw-medium">{p.product}</td>
+                    <td><code style={{ fontSize:12 }}>{p.sku}</code></td>
+                    <td><span className="badge bg-light text-dark border">{p.category}</span></td>
+                    <td className={p.qty === 0 ? 'text-danger fw-bold' : 'fw-medium'}>{p.qty}</td>
+                    <td>₦{p.cost.toLocaleString()}</td>
+                    <td>₦{p.price.toLocaleString()}</td>
+                    <td>₦{p.costValue.toLocaleString()}</td>
+                    <td className="fw-medium">₦{p.retailValue.toLocaleString()}</td>
+                    <td className="text-success fw-medium">₦{p.profit.toLocaleString()}</td>
+                    <td>
+                      <span className="badge" style={{ background: p.margin >= 30 ? '#d1fae5' : p.margin >= 15 ? '#fef3c7' : '#fee2e2', color: p.margin >= 30 ? '#065f46' : p.margin >= 15 ? '#92400e' : '#991b1b' }}>
+                        {p.margin}%
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="border-top">
+                <tr style={{ background:'#f8f9fa' }}>
+                  <td colSpan={6} className="fw-bold">Total</td>
+                  <td className="fw-bold">₦{totals.costValue.toLocaleString()}</td>
+                  <td className="fw-bold">₦{totals.retailValue.toLocaleString()}</td>
+                  <td className="fw-bold text-success">₦{totals.profit.toLocaleString()}</td>
+                  <td className="fw-bold">{Math.round((totals.profit / totals.retailValue) * 100)}%</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

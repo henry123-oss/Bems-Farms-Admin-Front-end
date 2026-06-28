@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { NavLink, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { ROLE_META } from '../../lib/roles'
 
 function SideLink({ to, children }) {
   return (
@@ -34,8 +35,9 @@ function CollapseMenu({ id, icon, label, badge, children }) {
 }
 
 export default function Sidebar() {
-  const { user } = useAuth()
+  const { user, hasRole } = useAuth()
   const initials = user ? `${user.first_name?.[0] ?? ''}${user.last_name?.[0] ?? ''}` : 'AS'
+  const roleMeta = user ? ROLE_META[user.role] : null
 
   /* Inject/update sidebar styles on every mount */
   useEffect(() => {
@@ -47,19 +49,17 @@ export default function Sidebar() {
       document.head.appendChild(style)
     }
     style.textContent = `
-      /* sidebar-wrapper fills #main-sidebar (which is position:fixed by template) */
       #main-sidebar .sidebar-wrapper {
         height: 100% !important;
         overflow: hidden !important;
         display: block !important;
       }
-      /* Nav menu: absolute inside the fixed #main-sidebar, scrollable */
       #main-sidebar .navbar-menu {
         position: absolute !important;
         top: 0 !important;
         left: 0 !important;
         right: 0 !important;
-        bottom: 58px !important;
+        bottom: 70px !important;
         overflow-y: auto !important;
         overflow-x: hidden !important;
         height: auto !important;
@@ -69,27 +69,23 @@ export default function Sidebar() {
       #main-sidebar .navbar-menu::-webkit-scrollbar { width: 3px; }
       #main-sidebar .navbar-menu::-webkit-scrollbar-track { background: transparent; }
       #main-sidebar .navbar-menu::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 3px; }
-      /* Profile footer: pinned to bottom of fixed sidebar */
       #main-sidebar .sidebar-profile-footer {
         position: absolute !important;
         bottom: 0 !important;
         left: 0 !important;
         right: 0 !important;
-        height: 58px !important;
+        height: 70px !important;
         z-index: 10 !important;
       }
-      /* Tighter nav-link height */
       #main-sidebar .navbar-nav-menu .nav-link {
         padding-top: 0.38rem;
         padding-bottom: 0.38rem;
       }
-      /* Smaller sub-menu items */
       #main-sidebar .sub-navbar-nav .nav-link {
         padding-top: 0.28rem;
         padding-bottom: 0.28rem;
         font-size: 0.8125rem;
       }
-      /* Tighter section labels */
       #main-sidebar .menu-label {
         padding-top: 0 !important;
         padding-bottom: 0 !important;
@@ -100,6 +96,28 @@ export default function Sidebar() {
       }
     `
   }, [])
+
+  // Role helpers
+  const is = (...roles) => hasRole(...roles)
+
+  const showProducts  = is('superadmin', 'manager', 'kitchen_staff')
+  const showInventory = is('superadmin', 'manager', 'kitchen_staff')
+  const showOrders    = is('superadmin', 'manager', 'accountant', 'delivery_manager', 'cashier', 'kitchen_staff')
+  const showDelivery  = is('superadmin', 'manager', 'delivery_manager')
+  const showCustomers = is('superadmin', 'manager', 'cashier')
+  const showStaff     = is('superadmin', 'manager')
+  const showFinance   = is('superadmin', 'manager', 'accountant')
+  const showReports   = is('superadmin', 'manager', 'accountant')
+  const showChefAI    = is('superadmin', 'manager', 'kitchen_staff')
+  const showStores    = is('superadmin')
+  const showSettings  = is('superadmin', 'manager')
+  const showPOS       = is('superadmin', 'manager', 'cashier')
+
+  const showProductsSection  = showProducts || showInventory
+  const showSalesLabel       = showOrders
+  const showOperationsLabel  = showDelivery || showCustomers || showStaff
+  const showFinanceLabel     = showFinance || showReports
+  const showToolsLabel       = showChefAI || showStores || showSettings
 
   return (
     <div id="main-sidebar" className="main-sidebar">
@@ -119,160 +137,180 @@ export default function Sidebar() {
               </SideLink>
             </li>
 
-            <li className="nav-item">
-              <SideLink to="/pos">
-                <i className="ri-store-2-line menu-icon"></i>
-                <span>Point of Sale</span>
-              </SideLink>
-            </li>
+            {showPOS && (
+              <li className="nav-item">
+                <SideLink to="/pos">
+                  <i className="ri-store-2-line menu-icon"></i>
+                  <span>Point of Sale</span>
+                </SideLink>
+              </li>
+            )}
 
-            {/* ── PRODUCTS & INVENTORY ── */}
-            <li className="menu-label px-2"><span>Products &amp; Stock</span></li>
+            {/* ── PRODUCTS & STOCK ── */}
+            {showProductsSection && (
+              <li className="menu-label px-2"><span>Products &amp; Stock</span></li>
+            )}
 
-            <CollapseMenu id="productsMenu" icon="ri-price-tag-3-line" label="Products">
-              <li><SideLink to="/products">All Products</SideLink></li>
-              <li><SideLink to="/products/add">Add Product</SideLink></li>
-              <li><SideLink to="/products/categories">Categories</SideLink></li>
-              <li><SideLink to="/products/sub-categories">Sub-Categories</SideLink></li>
-              <li><SideLink to="/products/units">Units of Measure</SideLink></li>
-              <li><SideLink to="/products/brands">Brands</SideLink></li>
-              <li><SideLink to="/products/variants">Variants</SideLink></li>
-              <li><SideLink to="/products/warranty">Warranty</SideLink></li>
-              <li><SideLink to="/products/reviews">Reviews</SideLink></li>
-              <li><SideLink to="/products/barcode">Barcode</SideLink></li>
-              <li><SideLink to="/products/import">Bulk Import</SideLink></li>
-              <li><SideLink to="/products/export">Bulk Export</SideLink></li>
-            </CollapseMenu>
+            {showProducts && (
+              <CollapseMenu id="productsMenu" icon="ri-price-tag-3-line" label="Products">
+                <li><SideLink to="/products">All Products</SideLink></li>
+                {is('superadmin', 'manager') && <li><SideLink to="/products/add">Add Product</SideLink></li>}
+                <li><SideLink to="/products/categories">Categories</SideLink></li>
+                <li><SideLink to="/products/sub-categories">Sub-Categories</SideLink></li>
+                <li><SideLink to="/products/units">Units of Measure</SideLink></li>
+                {is('superadmin', 'manager') && <li><SideLink to="/products/brands">Brands</SideLink></li>}
+                {is('superadmin', 'manager') && <li><SideLink to="/products/variants">Variants</SideLink></li>}
+                <li><SideLink to="/products/reviews">Reviews</SideLink></li>
+                {is('superadmin', 'manager') && <li><SideLink to="/products/barcode">Barcode</SideLink></li>}
+                {is('superadmin', 'manager') && <li><SideLink to="/products/export">Bulk Export</SideLink></li>}
+              </CollapseMenu>
+            )}
 
-            <CollapseMenu id="inventoryMenu" icon="ri-archive-stack-line" label="Inventory">
-              <li><SideLink to="/inventory/stock">Stock List</SideLink></li>
-              <li><SideLink to="/inventory/stock-in">Stock In</SideLink></li>
-              <li><SideLink to="/inventory/stock-out">Stock Out</SideLink></li>
-              <li><SideLink to="/inventory/adjustment">Adjustments</SideLink></li>
-              <li><SideLink to="/inventory/transfer">Stock Transfer</SideLink></li>
-              <li><SideLink to="/inventory/batches">Batch Management</SideLink></li>
-              <li><SideLink to="/inventory/warehouses">Warehouses</SideLink></li>
-              <li><SideLink to="/inventory/alerts">Low Stock Alerts</SideLink></li>
-              <li><SideLink to="/inventory/valuation">Valuation</SideLink></li>
-              <li><SideLink to="/inventory/lost-items">Lost &amp; Damaged</SideLink></li>
-            </CollapseMenu>
+            {showInventory && (
+              <CollapseMenu id="inventoryMenu" icon="ri-archive-stack-line" label="Inventory">
+                <li><SideLink to="/inventory/stock">Stock List</SideLink></li>
+                {is('superadmin', 'manager') && <li><SideLink to="/inventory/stock-in">Stock In</SideLink></li>}
+                {is('superadmin', 'manager') && <li><SideLink to="/inventory/stock-out">Stock Out</SideLink></li>}
+                {is('superadmin', 'manager') && <li><SideLink to="/inventory/adjustment">Adjustments</SideLink></li>}
+                {is('superadmin', 'manager') && <li><SideLink to="/inventory/transfer">Stock Transfer</SideLink></li>}
+                {is('superadmin', 'manager') && <li><SideLink to="/inventory/batches">Batch Management</SideLink></li>}
+                {is('superadmin', 'manager') && <li><SideLink to="/inventory/warehouses">Warehouses</SideLink></li>}
+                <li><SideLink to="/inventory/alerts">Low Stock Alerts</SideLink></li>
+                {is('superadmin', 'manager') && <li><SideLink to="/inventory/valuation">Valuation</SideLink></li>}
+                {is('superadmin', 'manager') && <li><SideLink to="/inventory/lost-items">Lost &amp; Damaged</SideLink></li>}
+              </CollapseMenu>
+            )}
 
             {/* ── SALES ── */}
-            <li className="menu-label px-2"><span>Sales</span></li>
+            {showSalesLabel && (
+              <li className="menu-label px-2"><span>Sales</span></li>
+            )}
 
-            <CollapseMenu id="ordersMenu" icon="ri-shopping-cart-2-line" label="Orders">
-              <li><SideLink to="/orders">All Orders</SideLink></li>
-              <li><SideLink to="/orders/invoices">Invoices</SideLink></li>
-              <li><SideLink to="/orders/refunds">Returns &amp; Refunds</SideLink></li>
-            </CollapseMenu>
-
-            <CollapseMenu id="purchaseMenu" icon="ri-shopping-bag-3-line" label="Purchase">
-              <li><SideLink to="/purchase">Purchase Orders</SideLink></li>
-              <li><SideLink to="/purchase/add">Add Purchase</SideLink></li>
-              <li><SideLink to="/purchase/returns">Purchase Returns</SideLink></li>
-              <li><SideLink to="/purchase/payments">Payments</SideLink></li>
-            </CollapseMenu>
-
-            <CollapseMenu id="suppliersMenu" icon="ri-truck-line" label="Suppliers">
-              <li><SideLink to="/suppliers">All Suppliers</SideLink></li>
-              <li><SideLink to="/suppliers/add">Add Supplier</SideLink></li>
-              <li><SideLink to="/suppliers/payments">Payments</SideLink></li>
-              <li><SideLink to="/suppliers/balance">Balance Reports</SideLink></li>
-            </CollapseMenu>
+            {showOrders && (
+              <CollapseMenu id="ordersMenu" icon="ri-shopping-cart-2-line" label="Orders">
+                <li><SideLink to="/orders">All Orders</SideLink></li>
+                {is('superadmin', 'manager', 'accountant', 'cashier') && (
+                  <li><SideLink to="/orders/invoices">Invoices</SideLink></li>
+                )}
+                {is('superadmin', 'manager') && (
+                  <li><SideLink to="/orders/refunds">Returns &amp; Refunds</SideLink></li>
+                )}
+              </CollapseMenu>
+            )}
 
             {/* ── OPERATIONS ── */}
-            <li className="menu-label px-2"><span>Operations</span></li>
+            {showOperationsLabel && (
+              <li className="menu-label px-2"><span>Operations</span></li>
+            )}
 
-            <CollapseMenu id="deliveriesMenu" icon="ri-bike-line" label="Deliveries">
-              <li><SideLink to="/deliveries/active">Active Deliveries</SideLink></li>
-              <li><SideLink to="/deliveries/drivers">Drivers</SideLink></li>
-              <li><SideLink to="/deliveries/zones">Delivery Zones</SideLink></li>
-            </CollapseMenu>
+            {showDelivery && (
+              <CollapseMenu id="deliveriesMenu" icon="ri-bike-line" label="Deliveries">
+                <li><SideLink to="/deliveries/active">Active Deliveries</SideLink></li>
+                <li><SideLink to="/deliveries/map">
+                  Live Map
+                  <span className="badge rounded-pill bg-success ms-2" style={{ fontSize: 9 }}>Live</span>
+                </SideLink></li>
+                <li><SideLink to="/deliveries/drivers">Drivers</SideLink></li>
+                <li><SideLink to="/deliveries/zones">Delivery Zones</SideLink></li>
+              </CollapseMenu>
+            )}
 
-            <CollapseMenu id="customersMenu" icon="ri-user-3-line" label="Customers">
-              <li><SideLink to="/customers">All Customers</SideLink></li>
-              <li><SideLink to="/customers/add">Add Customer</SideLink></li>
-              <li><SideLink to="/customers/loyalty">Loyalty Points</SideLink></li>
-              <li><SideLink to="/customers/wallet">Wallet Balance</SideLink></li>
-              <li><SideLink to="/customers/activity">Activity Log</SideLink></li>
-            </CollapseMenu>
+            {showCustomers && (
+              <CollapseMenu id="customersMenu" icon="ri-user-3-line" label="Customers">
+                <li><SideLink to="/customers">All Customers</SideLink></li>
+                {is('superadmin', 'manager') && (
+                  <li><SideLink to="/customers/loyalty">Loyalty Points</SideLink></li>
+                )}
+                {is('superadmin', 'manager') && (
+                  <li><SideLink to="/customers/activity">Activity Log</SideLink></li>
+                )}
+              </CollapseMenu>
+            )}
 
-            <CollapseMenu id="staffMenu" icon="ri-team-line" label="Staff">
-              <li><SideLink to="/staff">All Staff</SideLink></li>
-              <li><SideLink to="/staff/add">Add Staff</SideLink></li>
-              <li><SideLink to="/staff/roles">Roles &amp; Permissions</SideLink></li>
-              <li><SideLink to="/staff/attendance">Attendance</SideLink></li>
-              <li><SideLink to="/staff/schedule">Schedule</SideLink></li>
-              <li><SideLink to="/staff/holidays">Holidays</SideLink></li>
-              <li><SideLink to="/staff/payroll">Payroll</SideLink></li>
-            </CollapseMenu>
+            {showStaff && (
+              <CollapseMenu id="staffMenu" icon="ri-team-line" label="Staff">
+                <li><SideLink to="/staff">All Staff</SideLink></li>
+                <li><SideLink to="/staff/add">Add Staff</SideLink></li>
+                <li><SideLink to="/staff/roles">Roles &amp; Permissions</SideLink></li>
+                <li><SideLink to="/staff/attendance">Attendance</SideLink></li>
+                <li><SideLink to="/staff/schedule">Schedule</SideLink></li>
+                <li><SideLink to="/staff/holidays">Holidays</SideLink></li>
+                <li><SideLink to="/staff/payroll">Payroll</SideLink></li>
+              </CollapseMenu>
+            )}
 
             {/* ── FINANCE ── */}
-            <li className="menu-label px-2"><span>Finance</span></li>
+            {showFinanceLabel && (
+              <li className="menu-label px-2"><span>Finance</span></li>
+            )}
 
-            <CollapseMenu id="accountsMenu" icon="ri-bank-card-line" label="Accounts">
-              <li><SideLink to="/accounts/bank">Bank Accounts</SideLink></li>
-              <li><SideLink to="/accounts/income">Income</SideLink></li>
-              <li><SideLink to="/accounts/expenses">Expenses</SideLink></li>
-              <li><SideLink to="/accounts/transfer">Money Transfer</SideLink></li>
-            </CollapseMenu>
+            {showFinance && (
+              <CollapseMenu id="accountsMenu" icon="ri-bank-card-line" label="Accounts">
+                <li><SideLink to="/accounts/overview">Finance Overview</SideLink></li>
+                <li><SideLink to="/accounts/transactions">All Transactions</SideLink></li>
+                <li><SideLink to="/accounts/income">Income</SideLink></li>
+                <li><SideLink to="/accounts/expenses">Expenses</SideLink></li>
+                {is('superadmin', 'manager') && (
+                  <li><SideLink to="/accounts/commissions">Driver Commissions</SideLink></li>
+                )}
+                {is('superadmin', 'manager') && (
+                  <li><SideLink to="/accounts/bank">Bank Accounts</SideLink></li>
+                )}
+                {is('superadmin', 'manager') && (
+                  <li><SideLink to="/accounts/transfer">Money Transfer</SideLink></li>
+                )}
+              </CollapseMenu>
+            )}
 
-            <CollapseMenu id="reportsMenu" icon="ri-bar-chart-grouped-line" label="Reports">
-              <li><SideLink to="/reports/sales">Sales Report</SideLink></li>
-              <li><SideLink to="/reports/inventory">Inventory Report</SideLink></li>
-              <li><SideLink to="/reports/customers">Customer Report</SideLink></li>
-              <li><SideLink to="/reports/purchases">Purchase Report</SideLink></li>
-              <li><SideLink to="/reports/suppliers">Supplier Report</SideLink></li>
-              <li><SideLink to="/reports/expenses">Expense Report</SideLink></li>
-              <li><SideLink to="/reports/finance">Finance Report</SideLink></li>
-            </CollapseMenu>
+            {showReports && (
+              <CollapseMenu id="reportsMenu" icon="ri-bar-chart-grouped-line" label="Reports">
+                <li><SideLink to="/reports/sales">Sales Report</SideLink></li>
+                {is('superadmin', 'manager') && (
+                  <li><SideLink to="/reports/inventory">Inventory Report</SideLink></li>
+                )}
+                {is('superadmin', 'manager') && (
+                  <li><SideLink to="/reports/customers">Customer Report</SideLink></li>
+                )}
+                <li><SideLink to="/reports/expenses">Expense Report</SideLink></li>
+                <li><SideLink to="/reports/finance">Finance Report</SideLink></li>
+              </CollapseMenu>
+            )}
 
             {/* ── TOOLS & CONFIG ── */}
-            <li className="menu-label px-2"><span>Tools &amp; Config</span></li>
+            {showToolsLabel && (
+              <li className="menu-label px-2"><span>Tools &amp; Config</span></li>
+            )}
 
-            <CollapseMenu id="chefBemsMenu" icon="ri-robot-line" label="Chef Bems AI" badge="AI">
-              <li><SideLink to="/chef-bems/conversations">Conversations</SideLink></li>
-              <li><SideLink to="/chef-bems/dietary-rules">Dietary Rules</SideLink></li>
-              <li><SideLink to="/chef-bems/meal-associations">Meal Associations</SideLink></li>
-            </CollapseMenu>
+            {showChefAI && (
+              <CollapseMenu id="chefBemsMenu" icon="ri-robot-line" label="Chef Bems AI" badge="AI">
+                <li><SideLink to="/chef-bems/conversations">Conversations</SideLink></li>
+                {is('superadmin', 'manager') && (
+                  <li><SideLink to="/chef-bems/dietary-rules">Dietary Rules</SideLink></li>
+                )}
+                <li><SideLink to="/chef-bems/meal-associations">Meal Associations</SideLink></li>
+              </CollapseMenu>
+            )}
 
-            <CollapseMenu id="storesMenu" icon="ri-store-3-line" label="Multi-Store">
-              <li><SideLink to="/stores">All Stores</SideLink></li>
-              <li><SideLink to="/stores/add">Add Store</SideLink></li>
-            </CollapseMenu>
+            {showStores && (
+              <CollapseMenu id="storesMenu" icon="ri-store-3-line" label="Multi-Store">
+                <li><SideLink to="/stores">All Stores</SideLink></li>
+                <li><SideLink to="/stores/add">Add Store</SideLink></li>
+              </CollapseMenu>
+            )}
 
-            <CollapseMenu id="settingsMenu" icon="ri-settings-3-line" label="Settings">
-              <li><SideLink to="/settings/general">General</SideLink></li>
-              <li><SideLink to="/settings/pos">POS Settings</SideLink></li>
-              <li><SideLink to="/settings/payment">Payment Methods</SideLink></li>
-              <li><SideLink to="/settings/coupons">Coupons &amp; Discounts</SideLink></li>
-              <li><SideLink to="/settings/tax">Tax Settings</SideLink></li>
-              <li><SideLink to="/settings/currencies">Currencies</SideLink></li>
-              <li><SideLink to="/settings/invoices">Invoice Templates</SideLink></li>
-              <li><SideLink to="/settings/notifications">Notifications</SideLink></li>
-              <li><SideLink to="/settings/manager">Manager Settings</SideLink></li>
-            </CollapseMenu>
-
-            <li className="nav-item">
-              <SideLink to="/apps/calendar">
-                <i className="ri-calendar-line menu-icon"></i>
-                <span>Calendar</span>
-              </SideLink>
-            </li>
-
-            <li className="nav-item">
-              <SideLink to="/apps/chat">
-                <i className="ri-chat-3-line menu-icon"></i>
-                <span>Team Chat</span>
-              </SideLink>
-            </li>
-
-            <li className="nav-item">
-              <SideLink to="/apps/email">
-                <i className="ri-mail-line menu-icon"></i>
-                <span>Email</span>
-              </SideLink>
-            </li>
+            {showSettings && (
+              <CollapseMenu id="settingsMenu" icon="ri-settings-3-line" label="Settings">
+                <li><SideLink to="/settings/general">General</SideLink></li>
+                {is('superadmin') && <li><SideLink to="/settings/pos">POS Settings</SideLink></li>}
+                {is('superadmin') && <li><SideLink to="/settings/payment">Payment Methods</SideLink></li>}
+                {is('superadmin') && <li><SideLink to="/settings/coupons">Coupons &amp; Discounts</SideLink></li>}
+                {is('superadmin') && <li><SideLink to="/settings/tax">Tax Settings</SideLink></li>}
+                {is('superadmin') && <li><SideLink to="/settings/currencies">Currencies</SideLink></li>}
+                {is('superadmin') && <li><SideLink to="/settings/invoices">Invoice Templates</SideLink></li>}
+                <li><SideLink to="/settings/notifications">Notifications</SideLink></li>
+                {is('superadmin') && <li><SideLink to="/settings/manager">Manager Settings</SideLink></li>}
+              </CollapseMenu>
+            )}
 
             <li className="mb-2"></li>
           </ul>
@@ -285,7 +323,7 @@ export default function Sidebar() {
           display: 'flex',
           alignItems: 'center',
         }}>
-          <div className="dropdown dropup">
+          <div className="dropdown dropup w-100">
             <button
               className="btn p-0 w-100 text-start d-flex align-items-center gap-2"
               type="button"
@@ -293,8 +331,8 @@ export default function Sidebar() {
               aria-expanded="false"
             >
               <div
-                className="d-flex align-items-center justify-content-center rounded fw-bold text-white bg-success flex-shrink-0"
-                style={{ width: 32, height: 32, fontSize: 12 }}
+                className="d-flex align-items-center justify-content-center rounded fw-bold text-white flex-shrink-0"
+                style={{ width: 32, height: 32, fontSize: 12, background: roleMeta?.color ?? '#10b981' }}
               >
                 {initials}
               </div>
@@ -302,19 +340,29 @@ export default function Sidebar() {
                 <div className="fw-medium text-truncate" style={{ fontSize: 13, color: '#fff' }}>
                   {user?.first_name} {user?.last_name}
                 </div>
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', textTransform: 'capitalize' }}>
-                  {user?.role?.replace(/_/g, ' ') ?? 'Admin'}
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>
+                  {roleMeta?.label ?? user?.role}
                 </div>
               </div>
               <i className="ri-arrow-up-s-line" style={{ color: 'rgba(255,255,255,0.4)', fontSize: 16 }}></i>
             </button>
             <div className="dropdown-menu mb-1">
+              <div className="px-3 py-2 border-bottom mb-1">
+                <div style={{ fontSize: 11, color: '#94a3b8' }}>Signed in as</div>
+                <div className="d-flex align-items-center gap-2 mt-1">
+                  <span className="badge rounded-pill" style={{ background: roleMeta?.bg, color: roleMeta?.color, fontSize: 11 }}>
+                    <i className={`${roleMeta?.icon} me-1`}></i>{roleMeta?.label}
+                  </span>
+                </div>
+              </div>
               <Link className="dropdown-item" to="/settings/general">
                 <i className="ri-user-line me-2"></i>My Profile
               </Link>
-              <Link className="dropdown-item" to="/settings/general">
-                <i className="ri-settings-3-line me-2"></i>Settings
-              </Link>
+              {showSettings && (
+                <Link className="dropdown-item" to="/settings/general">
+                  <i className="ri-settings-3-line me-2"></i>Settings
+                </Link>
+              )}
               <div className="dropdown-divider"></div>
               <Link className="dropdown-item text-danger" to="/login">
                 <i className="ri-logout-box-r-line me-2"></i>Sign Out

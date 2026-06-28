@@ -36,7 +36,6 @@ export default function ProductsList() {
                                   </li>
                               </ul>
                           </div>
-                          <a className="btn btn-primary d-flex align-items-center gap-1" href="apps-products-add.html"><i data-lucide="plus" className="size-4"></i> Add Product</a>
                       </div>
                   </div>
               </div>
